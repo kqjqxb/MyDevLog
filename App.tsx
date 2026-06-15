@@ -1,6 +1,7 @@
 import React from 'react';
-import { RootFlow } from './app/navigation/RootFlow';
+
+import { App as DevLogApp } from '@/app/App';
 
 export default function App() {
-  return <RootFlow />;
+  return <DevLogApp />;
 }

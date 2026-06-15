@@ -1,97 +1,167 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# DevLog
 
-# Getting Started
+A production-quality engineering task tracker for React Native, built around four
+real, multi-step **Claude AI agents**. Dark, premium UI (Holywater / MyDrama
+inspired) with motion on essentially every surface.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+> Built with **React Native CLI** (not Expo), **TypeScript (strict)**, React
+> Navigation v7, Reanimated 3 + Moti, Zustand, React Hook Form + Zod, and the
+> Anthropic Claude API (`claude-sonnet-4-6`).
 
-## Step 1: Start Metro
+---
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Setup
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+```bash
+# 1. Install JS dependencies
+npm install
 
-```sh
-# Using npm
-npm start
+# 2. iOS native deps (CocoaPods)
+cd ios && pod install && cd ..
 
-# OR using Yarn
-yarn start
+# 3. Run
+npx react-native run-ios
+# or
+npx react-native run-android
 ```
 
-## Step 2: Build and run your app
+> **Fonts**: SF Pro Text `.ttf` files in `/fonts` are linked via
+> `react-native.config.js`. If you change them, re-run `npx react-native-asset`.
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+### Anthropic API key
 
-### Android
+The AI agents need a Claude API key. Open the app → **Settings** tab → paste your
+`sk-ant-...` key → **Save**. It is stored locally in AsyncStorage and only ever
+leaves the device to call the Claude API. See [`.env.example`](./.env.example)
+for the canonical variable name.
 
-```sh
-# Using npm
-npm run android
+---
 
-# OR using Yarn
-yarn android
+## Architecture
+
+Feature-based, scalable layout with path aliases (`@/...`):
+
+```
+src/
+  app/                 # Entry, providers, navigation root, bootstrap/splash
+    navigation/        # Root native stack + bottom tabs + dark theme
+  features/
+    tasks/             # Task list / detail / create-edit form + components
+    ai/                # 4 AI agents: hooks, result views, panels, AI tab
+    settings/          # API key + storage + about
+  shared/
+    components/        # Reusable animated UI (design-system primitives)
+    hooks/             # useTasks, agent-error mapping
+    utils/             # id, date, haptics, task sort/filter helpers
+    constants/         # colors, gradients, typography, spacing, motion, strings
+    types/             # Task / Subtask / AI result types
+  store/               # Zustand stores (tasks, settings) with write-through persistence
+  services/
+    storage/           # Typed AsyncStorage abstraction (task + settings storage)
+    ai/                # Anthropic REST client + agent logic
+      agents/          # prioritization | decomposition | statusUpdate | blockerDetector
 ```
 
-### iOS
+**Data flow**: screens → custom hooks → Zustand stores → storage service →
+AsyncStorage. AI: screens → agent hooks → agent modules → `anthropicClient` →
+Claude REST API. Stores hydrate once on launch (gated by a splash screen) and
+write through to disk on every mutation.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+**State management**: Zustand. Two small stores (`taskStore`, `settingsStore`)
+hold the source of truth in memory and persist asynchronously. Components select
+narrow slices so re-renders stay tight.
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+**Navigation**: a root **native stack** (`Tabs` → `TaskDetail` → `TaskForm`
+modal) wrapping a **bottom tab** navigator (Tasks / AI / Settings). The detail
+screen slides in; the create/edit form presents as a bottom-sheet modal. Per-
+screen entrance choreography is layered on with Moti spring transitions.
 
-```sh
-bundle install
+---
+
+## Storage choice & limitations
+
+This app uses **AsyncStorage** behind a typed service layer
+(`services/storage/`). It was chosen because:
+
+- **Single user, no backend.** The assignment is a local, single-device tracker
+  — there is no auth, sharing, or server, so a key/value store is the simplest
+  correct fit.
+- **Aligns with the "local storage" intent** and keeps the dependency surface
+  small and offline-first.
+- **Abstracted** so the rest of the app never touches AsyncStorage directly —
+  swapping in SQLite / MMKV / WatermelonDB later means changing one folder.
+
+**Limitations** (honest trade-offs):
+
+- **No cross-device sync** — data lives only on this device.
+- **~6 MB practical limit on Android** (default), so it suits hundreds–thousands
+  of tasks, not a large dataset.
+- **Whole-collection writes** — the store serialises the full task array on each
+  mutation. Fine at this scale; for very large datasets a row-oriented store
+  (SQLite/MMKV) would be more efficient.
+- **Not encrypted** — fine for task data; the API key is device-local but not in
+  the secure keychain (a production app would use Keychain/Keystore).
+
+---
+
+## AI features (all four implemented as real multi-step agents)
+
+Each agent has its own system prompt, returns **typed structured output**
+(via the Messages API `output_config.format` JSON schema), and exposes
+loading / error / empty states through a dedicated hook.
+
+### A — Prioritization Agent  (`prioritizationAgent.ts`)
+Sends the whole backlog (priority, age in days, status, subtask progress) and
+asks Claude what to do **today** and why. **Multi-step**: if the backlog is
+ambiguous it returns a single clarifying question first; the user answers and the
+conversation continues to a final ranked plan. UI: animated ranked list with
+per-item reasoning.
+
+### B — Task Decomposition Agent  (`decompositionAgent.ts`)
+Takes a task title + description. **Step 1** evaluates whether it's clear enough
+— if vague, it asks a clarifying question. **Step 2** generates an ordered
+subtask list. **Step 3** offers to auto-create the subtasks in the app; on
+confirm they animate into the task one-by-one.
+
+### C — Status Update Generator  (`statusUpdateAgent.ts`)
+Takes a task + subtasks + notes. **Step 1** classifies state
+(`on-track | blocked | completed | needs-review`); **Step 2** writes a concise,
+tone-matched Slack-style update. UI: typewriter reveal + copy-to-clipboard with
+haptic feedback + success shimmer.
+
+### D — Smart Blocker Detector  (`blockerDetectorAgent.ts`) — custom feature
+Analyses the **entire backlog** to (1) infer likely dependency links between
+tasks from semantic similarity of titles/descriptions, and (2) flag stale
+in-progress work, with a recommended unblocking action for each. **Why useful:**
+silent blockers and stale tasks kill team velocity; this surfaces them before
+standup. UI: dependency cards (blocker → blocked) + a stale-work list.
+
+The AI client (`anthropicClient.ts`) handles timeouts, exponential-backoff
+retries on 429/5xx, typed errors (`auth | rate-limit | network | parse | ...`),
+and defensive JSON parsing.
+
+---
+
+## Animations
+
+Reanimated 3 + Moti throughout: staggered list entrances, swipe-to-delete with
+spring physics (Gesture Handler), press-scale feedback, a pulsing gradient glow
+ring on the FAB, animated gradient priority badges, focus-animated inputs, the
+3-dot AI typing indicator, word-by-word streamed AI text, shimmer skeletons, an
+SVG checkmark "draw" animation, a sliding filter-tab indicator, and a living
+gradient backdrop on the AI panel.
+
+---
+
+## Quality
+
+```bash
+npx tsc --noEmit   # strict typecheck — clean
+npm run lint       # eslint — clean
+npm test           # jest unit tests (helpers + AI JSON parser)
 ```
 
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- Strict TypeScript, **no `any`**, no inline styles (all `StyleSheet` / design
+  constants), no hardcoded strings (centralised in `constants/strings.ts`).
+- Custom hooks for all business logic; `React.memo` / `useMemo` / `useCallback`
+  where it matters; error boundaries on every screen + at the root.
