@@ -24,4 +24,12 @@ export const settingsStorage = {
   async saveHistory(history: AgentHistoryEntry[]): Promise<void> {
     await writeJSON(STORAGE_KEYS.aiHistory, history);
   },
+
+  async getOnboardingCompleted(): Promise<boolean> {
+    return (await readString(STORAGE_KEYS.onboardingCompleted)) === 'true';
+  },
+
+  async setOnboardingCompleted(): Promise<void> {
+    await writeString(STORAGE_KEYS.onboardingCompleted, 'true');
+  },
 };

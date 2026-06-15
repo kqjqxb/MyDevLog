@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
 
-import { COLORS, GRADIENTS, MOTION, RADIUS, SPACING } from '@/shared/constants';
+import { COLORS, FONTS, GRADIENTS, MOTION, RADIUS, SPACING } from '@/shared/constants';
 import { triggerHaptic } from '@/shared/utils';
 
 import { ThemedText } from './ThemedText';
@@ -23,90 +24,139 @@ interface FilterTabsProps<T extends string> {
   onChange: (value: T) => void;
 }
 
+interface TabLayout {
+  x: number;
+  width: number;
+}
+
 /**
- * Horizontal filter tabs with a gradient pill indicator that springs between
- * the selected tab positions.
+ * Horizontal filter tabs with a gradient pill that physically slides (and
+ * resizes) to the selected tab using Reanimated springs. Each tab measures its
+ * own position via `onLayout`, so labels stay on a single line at their natural
+ * width and the row scrolls horizontally if it overflows.
  */
 export function FilterTabs<T extends string>({
   options,
   value,
   onChange,
 }: FilterTabsProps<T>) {
-  const [width, setWidth] = useState(0);
-  const count = options.length;
+  const layouts = useRef<Record<number, TabLayout>>({});
+  const pillX = useSharedValue(0);
+  const pillWidth = useSharedValue(0);
+
   const selectedIndex = Math.max(
     0,
     options.findIndex(option => option.value === value),
   );
-  const tabWidth = width > 0 ? (width - PADDING * 2) / count : 0;
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: withSpring(selectedIndex * tabWidth, MOTION.spring) }],
-    width: tabWidth,
+  const positionPill = useCallback(() => {
+    const layout = layouts.current[selectedIndex];
+    if (layout) {
+      pillX.value = layout.x;
+      pillWidth.value = layout.width;
+    }
+  }, [selectedIndex, pillX, pillWidth]);
+
+  // Slide the pill whenever the selection changes.
+  useEffect(positionPill, [positionPill]);
+
+  const handleTabLayout = useCallback(
+    (index: number, event: LayoutChangeEvent) => {
+      const { x, width } = event.nativeEvent.layout;
+      layouts.current[index] = { x, width };
+      if (index === selectedIndex) {
+        positionPill();
+      }
+    },
+    [positionPill, selectedIndex],
+  );
+
+  const pillStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: withSpring(pillX.value, MOTION.springSnappy) }],
+    width: withSpring(pillWidth.value, MOTION.springSnappy),
   }));
 
-  const handleLayout = (event: LayoutChangeEvent) => {
-    setWidth(event.nativeEvent.layout.width);
-  };
-
   return (
-    <View style={styles.container} onLayout={handleLayout}>
-      {width > 0 ? (
-        <Animated.View style={[styles.indicator, indicatorStyle]}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.content}
+      style={styles.scroll}>
+      <View style={styles.row}>
+        <Animated.View style={[styles.pill, pillStyle]}>
           <LinearGradient
             colors={GRADIENTS.primary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+            style={styles.fill}
           />
         </Animated.View>
-      ) : null}
-      {options.map(option => {
-        const active = option.value === value;
-        return (
-          <Pressable
-            key={option.value}
-            style={styles.tab}
-            onPress={() => {
-              triggerHaptic('selection');
-              onChange(option.value);
-            }}>
-            <ThemedText
-              variant="caption"
-              color={active ? COLORS.white : COLORS.textSecondary}>
-              {option.label}
-              {typeof option.count === 'number' ? `  ${option.count}` : ''}
-            </ThemedText>
-          </Pressable>
-        );
-      })}
-    </View>
+
+        {options.map((option, index) => {
+          const active = option.value === value;
+          return (
+            <Pressable
+              key={option.value}
+              style={styles.tab}
+              onLayout={event => handleTabLayout(index, event)}
+              onPress={() => {
+                triggerHaptic('selection');
+                onChange(option.value);
+              }}>
+              <ThemedText
+                variant="caption"
+                numberOfLines={1}
+                color={active ? COLORS.white : COLORS.textSecondary}
+                style={active ? styles.activeLabel : undefined}>
+                {option.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </View>
+    </ScrollView>
   );
 }
 
 const PADDING = 4;
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
+    flexGrow: 0,
+  },
+  content: {
+    flexGrow: 1,
+  },
+  row: {
     flexDirection: 'row',
+    alignSelf: 'flex-start',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.pill,
     padding: PADDING,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
   },
-  indicator: {
+  pill: {
     position: 'absolute',
     top: PADDING,
-    left: PADDING,
+    // left stays 0: measured tab x already includes the row's left padding,
+    // and absolute children are positioned from the row's border-box origin.
+    left: 0,
     bottom: PADDING,
     borderRadius: RADIUS.pill,
     overflow: 'hidden',
   },
+  fill: {
+    ...StyleSheet.absoluteFillObject,
+  },
   tab: {
-    flex: 1,
     paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  activeLabel: {
+    fontFamily: FONTS.semibold,
   },
 });

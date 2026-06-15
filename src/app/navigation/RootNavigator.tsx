@@ -1,13 +1,15 @@
 import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator } from '@react-navigation/stack';
 
 import { TaskDetailScreen, TaskFormScreen } from '@/features/tasks';
+import { COLORS } from '@/shared/constants';
 import { ErrorBoundary } from '@/shared/components';
 
 import { RootStackParamList } from './types';
 import { TabNavigator } from './TabNavigator';
+import { bottomSheet, slideUpFade, springTransition } from './transitions';
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createStackNavigator<RootStackParamList>();
 
 function TaskDetail() {
   return (
@@ -26,25 +28,34 @@ function TaskForm() {
 }
 
 /**
- * Root native stack. Detail slides in from the right with the platform spring;
- * the create/edit form presents as a bottom-sheet modal.
+ * Root JS stack with custom spring transitions:
+ *  - TaskDetail slides up from 30% with a fade (iOS-sheet feel).
+ *  - TaskForm presents as a bottom sheet springing up from the bottom.
+ * Both are swipe-down dismissible.
  */
 export function RootNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#0A0A0F' },
+        cardStyle: { backgroundColor: COLORS.background },
+        transitionSpec: springTransition,
+        cardStyleInterpolator: slideUpFade,
+        gestureEnabled: true,
+        gestureDirection: 'vertical',
       }}>
-      <Stack.Screen name="Tabs" component={TabNavigator} />
+      <Stack.Screen
+        name="Tabs"
+        component={TabNavigator}
+        options={{ gestureEnabled: false }}
+      />
       <Stack.Screen name="TaskDetail" component={TaskDetail} />
       <Stack.Screen
         name="TaskForm"
         component={TaskForm}
         options={{
-          presentation: 'modal',
-          animation: 'slide_from_bottom',
+          presentation: 'transparentModal',
+          cardStyleInterpolator: bottomSheet,
         }}
       />
     </Stack.Navigator>

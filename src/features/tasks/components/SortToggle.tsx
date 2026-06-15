@@ -16,29 +16,50 @@ interface SortToggleProps {
   onToggle: (next: SortMode) => void;
 }
 
-/** Toggles between priority/date sorting; the icon spins on each change. */
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const BORDER = 'rgba(124,58,237,0.55)';
+
+/**
+ * Outlined purple pill that toggles priority/date sorting. The icon spins and
+ * the whole pill springs on press.
+ */
 export function SortToggle({ mode, onToggle }: SortToggleProps) {
   const rotation = useSharedValue(0);
+  const scale = useSharedValue(1);
 
   const iconStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   const handlePress = useCallback(() => {
     triggerHaptic('selection');
-    rotation.value = withSpring(rotation.value + 180, MOTION.spring);
+    rotation.value = withSpring(rotation.value + 180, MOTION.springSnappy);
     onToggle(mode === 'priority' ? 'date' : 'priority');
   }, [mode, onToggle, rotation]);
 
   return (
-    <Pressable onPress={handlePress} style={styles.button}>
+    <AnimatedPressable
+      onPress={handlePress}
+      onPressIn={() => {
+        scale.value = withSpring(0.96, MOTION.springSnappy);
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, MOTION.springSnappy);
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`Sort by ${mode === 'priority' ? 'priority' : 'date'}`}
+      style={[styles.button, pressStyle]}>
       <Animated.View style={iconStyle}>
-        <ArrowUpDown color={COLORS.textSecondary} size={16} />
+        <ArrowUpDown color="#A78BFA" size={16} />
       </Animated.View>
       <ThemedText variant="caption" color={COLORS.textSecondary}>
-        {mode === 'priority' ? 'Priority' : 'Date'}
+        Sort by {mode === 'priority' ? 'Priority' : 'Date'}
       </ThemedText>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -46,12 +67,13 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
+    gap: SPACING.sm,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderColor: BORDER,
     backgroundColor: COLORS.surface,
+    alignSelf: 'flex-start',
   },
 });

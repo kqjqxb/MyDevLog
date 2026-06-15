@@ -38,6 +38,12 @@ export const MOTION = {
     stiffness: 120,
     mass: 0.9,
   },
+  /** Consistent snappy spring used by the newer UI (tabs, onboarding, press). */
+  springSnappy: {
+    damping: 20,
+    stiffness: 250,
+    mass: 0.8,
+  },
   timingFast: { duration: 180 },
   timingMed: { duration: 320 },
   timingSlow: { duration: 600 },

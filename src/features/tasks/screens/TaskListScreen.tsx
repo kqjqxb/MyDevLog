@@ -80,10 +80,10 @@ export function TaskListScreen() {
       </View>
 
       <View style={styles.controls}>
-        <View style={styles.tabs}>
-          <FilterTabs options={tabOptions} value={filter} onChange={setFilter} />
+        <FilterTabs options={tabOptions} value={filter} onChange={setFilter} />
+        <View style={styles.sortRow}>
+          <SortToggle mode={sort} onToggle={setSort} />
         </View>
-        <SortToggle mode={sort} onToggle={setSort} />
       </View>
 
       {!hydrated ? (
@@ -122,14 +122,12 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   controls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
     paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.lg,
+    gap: SPACING.md,
   },
-  tabs: {
-    flex: 1,
+  sortRow: {
+    flexDirection: 'row',
   },
   listContent: {
     paddingHorizontal: SPACING.xl,

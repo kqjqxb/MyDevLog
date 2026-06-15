@@ -204,6 +204,7 @@ export function TaskFormScreen() {
 
           <View style={styles.footer}>
             <GradientButton
+              style={{ marginBottom: SPACING.lg }}
               label={isEditing ? STRINGS.form.submitEdit : STRINGS.form.submitCreate}
               gradient="primary"
               loading={isSubmitting}
