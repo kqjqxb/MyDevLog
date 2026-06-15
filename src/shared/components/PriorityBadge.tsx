@@ -27,7 +27,13 @@ const GRADIENT_BY_PRIORITY: Record<TaskPriority, keyof typeof GRADIENTS> = {
   high: 'danger',
 };
 
-/** Gradient-filled priority pill with an optional pulse for high priority. */
+/**
+ * Gradient-filled priority pill with an optional pulse for high priority.
+ *
+ * The pill is sized by a content View; the gradient sits behind it as an
+ * absolute, non-interactive layer clipped to the pill radius — so the label is
+ * never clipped regardless of platform gradient measurement behaviour.
+ */
 export function PriorityBadge({ priority, pulse = false }: PriorityBadgeProps) {
   const glow = useSharedValue(0);
 
@@ -50,16 +56,21 @@ export function PriorityBadge({ priority, pulse = false }: PriorityBadgeProps) {
 
   return (
     <Animated.View style={[styles.wrapper, animatedStyle]}>
-      <LinearGradient
-        colors={GRADIENTS[GRADIENT_BY_PRIORITY[priority]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.badge}>
-        <View style={styles.dot} />
-        <ThemedText variant="caption" color={COLORS.white}>
-          {PRIORITY_LABEL[priority]}
-        </ThemedText>
-      </LinearGradient>
+      <View style={styles.badge}>
+        <LinearGradient
+          colors={GRADIENTS[GRADIENT_BY_PRIORITY[priority]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          pointerEvents="none"
+          style={styles.fill}
+        />
+        <View style={styles.content}>
+          <View style={styles.dot} />
+          <ThemedText variant="caption" color={COLORS.white}>
+            {PRIORITY_LABEL[priority]}
+          </ThemedText>
+        </View>
+      </View>
     </Animated.View>
   );
 }
@@ -69,12 +80,18 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   badge: {
+    borderRadius: RADIUS.pill,
+    overflow: 'hidden',
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+  },
+  fill: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  content: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-    borderRadius: RADIUS.pill,
   },
   dot: {
     width: 6,

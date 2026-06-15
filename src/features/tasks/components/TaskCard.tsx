@@ -36,6 +36,7 @@ interface TaskCardProps {
 
 const DELETE_THRESHOLD = -96;
 const SWIPE_OUT = -500;
+const INACTIVE_BORDER: string[] = [COLORS.border, COLORS.border];
 
 function TaskCardComponent({ task, onPress, onDelete }: TaskCardProps) {
   const translateX = useSharedValue(0);
@@ -77,7 +78,9 @@ function TaskCardComponent({ task, onPress, onDelete }: TaskCardProps) {
   }));
 
   const containerStyle = useAnimatedStyle(() =>
-    itemHeight.value === undefined ? {} : { height: itemHeight.value, opacity: itemHeight.value === 0 ? 0 : 1 },
+    itemHeight.value === undefined
+      ? {}
+      : { height: itemHeight.value, opacity: itemHeight.value === 0 ? 0 : 1 },
   );
 
   const handlePressIn = useCallback(() => {
@@ -96,48 +99,61 @@ function TaskCardComponent({ task, onPress, onDelete }: TaskCardProps) {
 
       <GestureDetector gesture={panGesture}>
         <Animated.View style={cardStyle}>
-          <LinearGradient
-            colors={highlight ? GRADIENTS.primary : [COLORS.border, COLORS.border]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.borderGradient}>
-            <Pressable
-              onPress={() => onPress(task)}
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-              style={[styles.card, highlight && SHADOWS.glow]}>
-              <View style={styles.headerRow}>
-                <ThemedText variant="subheading" numberOfLines={1} style={styles.title}>
-                  {task.title}
-                </ThemedText>
-                <PriorityBadge priority={task.priority} pulse />
-              </View>
-
-              {task.description ? (
-                <ThemedText
-                  variant="secondary"
-                  color={COLORS.textSecondary}
-                  numberOfLines={2}
-                  style={styles.description}>
-                  {task.description}
-                </ThemedText>
-              ) : null}
-
-              <View style={styles.footerRow}>
-                <StatusPill status={task.status} />
-                <View style={styles.metaRight}>
-                  {total > 0 ? (
-                    <ThemedText variant="caption" color={COLORS.textTertiary}>
-                      {done}/{total} subtasks
-                    </ThemedText>
-                  ) : null}
-                  <ThemedText variant="caption" color={COLORS.textTertiary}>
-                    {relativeTime(task.updatedAt)}
+          {/*
+            Pressable is the outer interactive wrapper. The gradient "border" is
+            an absolutely-positioned layer filling a 1px-padded wrapper; the
+            opaque inner card sits on top, leaving a 1px gradient ring. The
+            gradient never sizes layout or handles touches.
+          */}
+          <Pressable
+            onPress={() => onPress(task)}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            accessibilityRole="button"
+            accessibilityLabel={task.title}
+            style={[styles.pressable, highlight && SHADOWS.glow]}>
+            <View style={styles.borderWrap}>
+              <LinearGradient
+                colors={highlight ? GRADIENTS.primary : INACTIVE_BORDER}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                pointerEvents="none"
+                style={styles.fill}
+              />
+              <View style={styles.cardInner}>
+                <View style={styles.headerRow}>
+                  <ThemedText variant="subheading" numberOfLines={1} style={styles.title}>
+                    {task.title}
                   </ThemedText>
+                  <PriorityBadge priority={task.priority} pulse />
+                </View>
+
+                {task.description ? (
+                  <ThemedText
+                    variant="secondary"
+                    color={COLORS.textSecondary}
+                    numberOfLines={2}
+                    style={styles.description}>
+                    {task.description}
+                  </ThemedText>
+                ) : null}
+
+                <View style={styles.footerRow}>
+                  <StatusPill status={task.status} />
+                  <View style={styles.metaRight}>
+                    {total > 0 ? (
+                      <ThemedText variant="caption" color={COLORS.textTertiary}>
+                        {done}/{total} subtasks
+                      </ThemedText>
+                    ) : null}
+                    <ThemedText variant="caption" color={COLORS.textTertiary}>
+                      {relativeTime(task.updatedAt)}
+                    </ThemedText>
+                  </View>
                 </View>
               </View>
-            </Pressable>
-          </LinearGradient>
+            </View>
+          </Pressable>
         </Animated.View>
       </GestureDetector>
     </Animated.View>
@@ -159,11 +175,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingRight: SPACING.xl,
   },
-  borderGradient: {
+  pressable: {
     borderRadius: RADIUS.lg,
+  },
+  borderWrap: {
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
     padding: 1,
   },
-  card: {
+  fill: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardInner: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg - 1,
     padding: SPACING.lg,

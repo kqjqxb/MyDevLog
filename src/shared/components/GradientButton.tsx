@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleProp,
   StyleSheet,
+  View,
   ViewStyle,
 } from 'react-native';
 import Animated, {
@@ -39,7 +40,13 @@ interface GradientButtonProps {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /**
- * Primary CTA: gradient fill + spring press-feedback (scale to 0.97) + haptic.
+ * Primary CTA: spring press-feedback (scale to 0.97) + haptic.
+ *
+ * Layout pattern: the Pressable is the outer interactive wrapper; a plain View
+ * sizes the button from its padding + content; the LinearGradient is an
+ * absolutely-positioned, non-interactive background layer clipped to the
+ * container radius. This keeps the gradient out of layout/measurement (it does
+ * not reliably grow to fit children on Fabric), so the label is never clipped.
  */
 export function GradientButton({
   label,
@@ -79,25 +86,33 @@ export function GradientButton({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      accessibilityLabel={label}
       style={[animatedStyle, styles.pressable, disabled && styles.disabled, style]}>
-      <LinearGradient
-        colors={GRADIENTS[gradient]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.gradient, compact && styles.compact]}>
-        {loading ? (
-          <ActivityIndicator color={COLORS.white} />
-        ) : (
-          <>
-            {icon}
-            {label ? (
-              <ThemedText variant="bodyMedium" color={COLORS.white}>
-                {label}
-              </ThemedText>
-            ) : null}
-          </>
-        )}
-      </LinearGradient>
+      <View style={[styles.container, compact && styles.compact]}>
+        <LinearGradient
+          colors={GRADIENTS[gradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          pointerEvents="none"
+          style={styles.fill}
+        />
+        <View style={styles.content}>
+          {loading ? (
+            <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <>
+              {icon}
+              {label ? (
+                <ThemedText variant="bodyMedium" color={COLORS.white}>
+                  {label}
+                </ThemedText>
+              ) : null}
+            </>
+          )}
+        </View>
+      </View>
     </AnimatedPressable>
   );
 }
@@ -109,17 +124,23 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-  gradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
+  container: {
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.xl,
-    borderRadius: RADIUS.md,
   },
   compact: {
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
+  },
+  fill: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
   },
 });

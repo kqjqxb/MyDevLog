@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     right: SPACING.xl,
-    bottom: SPACING.xl,
+    bottom: SPACING.huge * 2.1,
   },
   fabWrap: {
     alignItems: 'center',
