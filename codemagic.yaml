@@ -1,0 +1,74 @@
+workflows:
+  react-native-ios:
+    name: React Native iOS
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      node: 20
+      xcode: 26.2
+      cocoapods: default
+      groups:
+        - fotogoren-durdi-jrolious-crds  # <----
+      vars:
+        BUNDLE_ID: "com.foroiten.driduliro.jironeys.app" # <----
+        APP_STORE_CONNECT_ISSUER_ID: "e69a6690-770e-4951-aca7-f74fbd29c90e" # <----
+        APP_STORE_APP_ID: 6776552645 # <----
+        APP_STORE_CONNECT_KEY_ID: "J6B7S263B6" # <----
+        XCODE_WORKSPACE: "ForgottenDruidJourneys.xcworkspace" # <----
+        XCODE_SCHEME: "ForgottenDruidJourneys" # <----
+    triggering:
+      events:
+        - push
+        - tag
+        - pull_request
+      branch_patterns:
+        - pattern: develop
+          include: true
+          source: true
+    scripts:
+      - name: Print toolchain versions
+        script: |
+          xcodebuild -version
+          node -v
+          pod --version
+      - name: Install npm dependencies
+        script: npm install --force
+      - name: Install CocoaPods dependencies
+        script: cd ios && pod install --repo-update
+      - name: Set up keychain for code signing
+        script: keychain initialize
+      - name: Fetch signing files
+        script: app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+      - name: Use system default keychain
+        script: keychain add-certificates
+      - name: Increment build number
+        script: |
+          cd $CM_BUILD_DIR/ios
+          agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID") + 1))
+      - name: Set up code signing settings in Xcode project
+        script: xcode-project use-profiles --warn-only
+      - name: Build IPA for distribution
+        script: xcode-project build-ipa --workspace "$CM_BUILD_DIR/ios/$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME" --archive-flags="-destination 'generic/platform=iOS'"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+    publishing:
+      email:
+        recipients:
+          - joonasreik07@icloud.com       # <----
+        notify:
+          success: true
+          failure: false
+      slack:
+        channel: '#builds'
+        notify_on_build_start: true
+        notify:
+          success: true
+          failure: false
+      app_store_connect:
+        api_key: "$APP_STORE_CONNECT_PRIVATE_KEY"
+        key_id: "$APP_STORE_CONNECT_KEY_ID"
+        issuer_id: "$APP_STORE_CONNECT_ISSUER_ID"
+        submit_to_testflight: true
