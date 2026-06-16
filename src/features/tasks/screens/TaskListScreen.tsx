@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, Dimensions, FlatList, ListRenderItem, StyleSheet, View } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ClipboardList } from 'lucide-react-native';
@@ -86,29 +87,36 @@ export function TaskListScreen() {
         </View>
       </View>
 
-      {!hydrated ? (
-        <View style={styles.listContent}>
-          {[0, 1, 2, 3].map(i => (
-            <SkeletonCard key={i} />
-          ))}
-        </View>
-      ) : isEmpty ? (
-        <EmptyState
-          title={noTasksAtAll ? STRINGS.tasks.emptyTitle : STRINGS.tasks.emptyFilteredTitle}
-          subtitle={
-            noTasksAtAll ? STRINGS.tasks.emptySubtitle : STRINGS.tasks.emptyFilteredSubtitle
-          }
-          icon={<ClipboardList color={COLORS.white} size={40} />}
+      <View style={styles.listWrapper}>
+        {!hydrated ? (
+          <View style={styles.listContent}>
+            {[0, 1, 2, 3].map(i => (
+              <SkeletonCard key={i} />
+            ))}
+          </View>
+        ) : isEmpty ? (
+          <EmptyState
+            title={noTasksAtAll ? STRINGS.tasks.emptyTitle : STRINGS.tasks.emptyFilteredTitle}
+            subtitle={
+              noTasksAtAll ? STRINGS.tasks.emptySubtitle : STRINGS.tasks.emptyFilteredSubtitle
+            }
+            icon={<ClipboardList color={COLORS.white} size={40} />}
+          />
+        ) : (
+          <FlatList
+            data={visibleTasks}
+            keyExtractor={item => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+        <LinearGradient
+          colors={['#0A0A0F', 'transparent']}
+          style={styles.topFade}
+          pointerEvents="none"
         />
-      ) : (
-        <FlatList
-          data={visibleTasks}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+      </View>
 
       <CreateTaskFab onPress={() => navigation.navigate('TaskForm')} />
     </ScreenContainer>
@@ -123,7 +131,7 @@ const styles = StyleSheet.create({
   },
   controls: {
     paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.lg,
+    paddingTop: SPACING.lg,
     gap: SPACING.md,
   },
   sortRow: {
@@ -132,5 +140,18 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: SPACING.xl,
     paddingBottom: Dimensions.get('window').height * 0.23,
+    marginTop: 17
+  },
+  listWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
+  topFade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: SPACING.xl,
+    zIndex: 10,
   },
 });
