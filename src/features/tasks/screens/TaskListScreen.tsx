@@ -131,6 +131,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: SPACING.xl,
-    paddingBottom: 120,
+    paddingVertical: SPACING.xxl,
   },
 });

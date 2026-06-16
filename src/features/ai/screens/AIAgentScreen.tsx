@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 import { AlertTriangle, Sparkles } from 'lucide-react-native';
 
 import {
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.lg,
-    paddingBottom: SPACING.huge,
+    paddingBottom: Dimensions.get('window').height * 0.16,
   },
   hint: {
     marginBottom: SPACING.lg,

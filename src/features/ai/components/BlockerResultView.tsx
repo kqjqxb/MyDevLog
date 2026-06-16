@@ -39,7 +39,9 @@ export function BlockerResultView({ result }: Props) {
               transition={{ type: 'spring', delay: index * 100, damping: 16, stiffness: 150 }}
               style={styles.linkCard}>
               <View style={styles.node}>
-                <ThemedText variant="bodyMedium" numberOfLines={1}>
+                <ThemedText variant="bodyMedium" numberOfLines={2} style={{
+                  maxWidth: '80%',
+                }}>
                   {link.blockerTitle}
                 </ThemedText>
                 <ThemedText variant="caption" color={COLORS.warning}>
