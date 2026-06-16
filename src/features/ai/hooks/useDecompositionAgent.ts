@@ -51,6 +51,7 @@ export function useDecompositionAgent() {
       try {
         apply(await runDecomposition(apiKey, title, description));
       } catch (error) {
+        console.error('[DecompositionAgent] run failed', error);
         setState({ phase: 'error', result: null, clarifyingQuestion: null, error: toAgentErrorMessage(error) });
       }
     },
@@ -63,6 +64,7 @@ export function useDecompositionAgent() {
       try {
         apply(await continueDecomposition(apiKey, conversation.current, text));
       } catch (error) {
+        console.error('[DecompositionAgent] answer failed', error);
         setState({ phase: 'error', result: null, clarifyingQuestion: null, error: toAgentErrorMessage(error) });
       }
     },

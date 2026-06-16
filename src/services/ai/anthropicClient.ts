@@ -50,6 +50,7 @@ function sleep(ms: number): Promise<void> {
 function mapAxiosError(error: unknown): AnthropicError {
   if (isAxiosError(error)) {
     const status = error.response?.status;
+    console.error('[Anthropic] HTTP error', status, error.response?.data);
     if (status === 401 || status === 403) {
       return new AnthropicError('auth', 'Invalid or unauthorized API key.');
     }
@@ -59,8 +60,10 @@ function mapAxiosError(error: unknown): AnthropicError {
     if (error.code === 'ECONNABORTED' || error.message.includes('Network')) {
       return new AnthropicError('network', 'Network request failed.');
     }
-    return new AnthropicError('unknown', error.message);
+    const apiMessage = (error.response?.data as { error?: { message?: string } })?.error?.message;
+    return new AnthropicError('unknown', apiMessage ?? error.message);
   }
+  console.error('[Anthropic] Unexpected error', error);
   return new AnthropicError('unknown', 'Unexpected error contacting Claude.');
 }
 
@@ -79,8 +82,6 @@ export async function sendMessage(options: SendOptions): Promise<string> {
   const body: Record<string, unknown> = {
     model: ANTHROPIC_CONFIG.model,
     max_tokens: maxTokens ?? ANTHROPIC_CONFIG.defaultMaxTokens,
-    // Thinking disabled keeps latency low and the response a single text block.
-    thinking: { type: 'disabled' },
     system,
     messages,
   };
@@ -89,7 +90,6 @@ export async function sendMessage(options: SendOptions): Promise<string> {
     body.output_config = {
       format: {
         type: 'json_schema',
-        name: jsonSchema.name,
         schema: jsonSchema.schema,
       },
     };
