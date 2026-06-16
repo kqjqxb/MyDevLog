@@ -1,13 +1,13 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import LinearGradient from 'react-native-linear-gradient';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { COLORS, FONTS, MOTION, RADIUS, SPACING } from '@/shared/constants';
+import { COLORS, FONTS, MOTION, SPACING } from '@/shared/constants';
 import { triggerHaptic } from '@/shared/utils';
 
 import { ThemedText } from './ThemedText';
@@ -24,83 +24,107 @@ interface FilterTabsProps<T extends string> {
   onChange: (value: T) => void;
 }
 
-interface TabLayout {
-  x: number;
-  width: number;
-}
+const PADDING = 4;
+const PILL_RADIUS = 9999;
 
 export function FilterTabs<T extends string>({
   options,
   value,
   onChange,
 }: FilterTabsProps<T>) {
-  const layouts = useRef<Record<number, TabLayout>>({});
-  const pillX = useSharedValue(0);
+  const didLayout = useRef(false);
+
+  const containerWidth = useSharedValue(0);
+  const pillX = useSharedValue(PADDING);
   const pillWidth = useSharedValue(0);
-  const isFirstLayout = useRef(true);
+  const pillOpacity = useSharedValue(0);
 
   const selectedIndex = Math.max(
     0,
     options.findIndex(option => option.value === value),
   );
 
-  const positionPill = useCallback(() => {
-    const layout = layouts.current[selectedIndex];
-    if (layout) {
-      if (isFirstLayout.current) {
-        pillX.value = layout.x;
-        pillWidth.value = layout.width;
-        isFirstLayout.current = false;
-      } else {
-        pillX.value = layout.x;
-        pillWidth.value = layout.width;
-      }
-    }
-  }, [selectedIndex, pillX, pillWidth]);
+  const updatePill = (width: number, index: number, animated = true) => {
+    const count = Math.max(options.length, 1);
+    const tabWidth = (width - PADDING * 2) / count;
 
-  useEffect(positionPill, [positionPill]);
+    if (tabWidth <= 0) return;
 
-  const handleTabLayout = useCallback(
-    (index: number, event: LayoutChangeEvent) => {
-      const { x, width } = event.nativeEvent.layout;
-      layouts.current[index] = { x, width };
-      if (index === selectedIndex) {
-        positionPill();
-      }
-    },
-    [positionPill, selectedIndex],
-  );
+    const nextX = PADDING + tabWidth * index;
+
+    pillX.value = animated
+      ? withSpring(nextX, MOTION.springSnappy)
+      : nextX;
+
+    pillWidth.value = animated
+      ? withSpring(tabWidth, MOTION.springSnappy)
+      : tabWidth;
+
+    pillOpacity.value = animated
+      ? withSpring(1, MOTION.springSnappy)
+      : 1;
+  };
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const width = event.nativeEvent.layout.width;
+
+    containerWidth.value = width;
+
+    updatePill(width, selectedIndex, didLayout.current);
+
+    didLayout.current = true;
+  };
+
+  useEffect(() => {
+    if (!didLayout.current || containerWidth.value <= 0) return;
+
+    updatePill(containerWidth.value, selectedIndex, true);
+  }, [selectedIndex, options.length]);
 
   const pillStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: withSpring(pillX.value, MOTION.springSnappy) }],
-    width: withSpring(pillWidth.value, MOTION.springSnappy),
-    opacity: pillWidth.value > 0 ? 1 : 0,
+    width: pillWidth.value,
+    opacity: pillOpacity.value,
+    transform: [{ translateX: pillX.value }],
   }));
 
   return (
-    <View style={styles.row}>
-      <Animated.View style={[styles.pill, pillStyle]}>
-        <LinearGradient
-          colors={['#7C3AED', '#EC4899']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-          }}
-        />
+    <View style={styles.row} onLayout={handleLayout}>
+      <Animated.View pointerEvents="none" style={[styles.pill, pillStyle]}>
+        <Svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none">
+          <Defs>
+            <LinearGradient
+              id="filterTabGradient"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="0%">
+              <Stop offset="0%" stopColor="#8B3DFF" />
+              <Stop offset="50%" stopColor="#D946EF" />
+              <Stop offset="100%" stopColor="#EC4899" />
+            </LinearGradient>
+          </Defs>
+
+          <Rect
+            x="0"
+            y="0"
+            width="100"
+            height="100"
+            fill="url(#filterTabGradient)"
+          />
+        </Svg>
       </Animated.View>
 
-      {options.map((option, index) => {
+      {options.map(option => {
         const active = option.value === value;
+
         return (
           <Pressable
             key={option.value}
             style={styles.tab}
-            onLayout={event => handleTabLayout(index, event)}
             onPress={() => {
               triggerHaptic('selection');
               onChange(option.value);
@@ -119,32 +143,35 @@ export function FilterTabs<T extends string>({
   );
 }
 
-const PADDING = 4;
-
 const styles = StyleSheet.create({
   row: {
-  flexDirection: 'row',
-  backgroundColor: COLORS.surface,
-  borderRadius: RADIUS.pill,
-  padding: PADDING,
-  borderWidth: StyleSheet.hairlineWidth,
-  borderColor: COLORS.border,
-},
+    position: 'relative',
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: PILL_RADIUS,
+    padding: PADDING,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+  },
   pill: {
     position: 'absolute',
     top: PADDING,
-    left: 0,
     bottom: PADDING,
-    borderRadius: RADIUS.pill,
+    left: 0,
+    borderRadius: PILL_RADIUS,
     overflow: 'hidden',
+    zIndex: 0,
+    elevation: 0,
   },
   tab: {
-  flex: 1,
-  paddingVertical: SPACING.md,
-  paddingHorizontal: SPACING.xs, // або 4-6px
-  alignItems: 'center',
-  justifyContent: 'center',
-},
+    flex: 1,
+    zIndex: 1,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   activeLabel: {
     fontFamily: FONTS.semibold,
   },
