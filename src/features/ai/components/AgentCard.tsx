@@ -136,29 +136,31 @@ export function AgentCard({
       {showResult ? (
         <View style={styles.result}>
           {children}
-          <View style={styles.resultActions}>
-            {resultText ? (
-              <Pressable
-                onPress={handleCopy}
-                style={[styles.copyButton, copied && styles.copyButtonActive]}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <ThemedText
-                  variant="secondary"
-                  color={copied ? COLORS.success : '#7C5CFC'}>
-                  {copied ? 'Copied!' : 'Copy'}
-                </ThemedText>
-              </Pressable>
-            ) : null}
-            {onClose ? (
-              <Pressable
-                onPress={onClose}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <ThemedText variant="secondary" color={COLORS.textTertiary}>
-                  Close
-                </ThemedText>
-              </Pressable>
-            ) : null}
-          </View>
+          {(resultText || onClose) ? (
+            <View style={styles.resultActions}>
+              {resultText ? (
+                <Pressable
+                  onPress={handleCopy}
+                  style={[styles.copyButton, copied && styles.copyButtonActive]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <ThemedText
+                    variant="secondary"
+                    color={copied ? COLORS.success : '#7C5CFC'}>
+                    {copied ? 'Copied!' : 'Copy'}
+                  </ThemedText>
+                </Pressable>
+              ) : null}
+              {onClose ? (
+                <Pressable
+                  onPress={onClose}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <ThemedText variant="secondary" color={COLORS.textTertiary}>
+                    Close
+                  </ThemedText>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
         </View>
       ) : null}
     </GlassCard>

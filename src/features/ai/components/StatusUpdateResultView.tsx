@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { Check, Copy } from 'lucide-react-native';
+import { Check, Copy, X } from 'lucide-react-native';
 
 import { COLORS, RADIUS, SPACING, STRINGS } from '@/shared/constants';
 import {
@@ -14,6 +14,7 @@ import { triggerHaptic } from '@/shared/utils';
 
 interface Props {
   result: StatusUpdateResult;
+  onClose?: () => void;
 }
 
 const STATE_COLOR: Record<TaskState, string> = {
@@ -31,7 +32,7 @@ const STATE_LABEL: Record<TaskState, string> = {
 };
 
 /** Slack-style update with a typewriter reveal and copy-to-clipboard + haptic. */
-export function StatusUpdateResultView({ result }: Props) {
+export function StatusUpdateResultView({ result, onClose }: Props) {
   const [copied, setCopied] = useState(false);
   const [shimmer, setShimmer] = useState(0);
   const color = STATE_COLOR[result.state];
@@ -58,16 +59,26 @@ export function StatusUpdateResultView({ result }: Props) {
         <TypewriterText text={result.message} variant="body" style={styles.message} />
       </View>
 
-      <Pressable onPress={handleCopy} style={styles.copyButton}>
-        {copied ? (
-          <Check color={COLORS.success} size={16} />
-        ) : (
-          <Copy color={COLORS.textSecondary} size={16} />
-        )}
-        <ThemedText variant="caption" color={copied ? COLORS.success : COLORS.textSecondary}>
-          {copied ? STRINGS.ai.copied : STRINGS.ai.copy}
-        </ThemedText>
-      </Pressable>
+      <View style={styles.buttonRow}>
+        <Pressable onPress={handleCopy} style={styles.copyButton}>
+          {copied ? (
+            <Check color={COLORS.success} size={16} />
+          ) : (
+            <Copy color={COLORS.textSecondary} size={16} />
+          )}
+          <ThemedText variant="caption" color={copied ? COLORS.success : COLORS.textSecondary}>
+            {copied ? STRINGS.ai.copied : STRINGS.ai.copy}
+          </ThemedText>
+        </Pressable>
+        {onClose ? (
+          <Pressable onPress={onClose} style={styles.closeButton}>
+            <X color={COLORS.textTertiary} size={16} />
+            <ThemedText variant="caption" color={COLORS.textTertiary}>
+              Close
+            </ThemedText>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -102,10 +113,19 @@ const styles = StyleSheet.create({
   message: {
     lineHeight: 22,
   },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.lg,
+  },
   copyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
-    alignSelf: 'flex-start',
+  },
+  closeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
   },
 });

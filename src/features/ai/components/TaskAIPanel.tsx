@@ -17,6 +17,8 @@ import {
   useDecompositionAgent,
   usePrioritizationAgent,
   useStatusUpdateAgent,
+  serializePrioritizationResult,
+  serializeBlockerResult,
 } from '../hooks';
 import { AgentCard } from './AgentCard';
 import { BlockerResultView } from './BlockerResultView';
@@ -78,7 +80,8 @@ export function TaskAIPanel({ task, onApplySubtasks }: TaskAIPanelProps) {
         runLabel={STRINGS.ai.decompose}
         disabled={!hasKey}
         onRun={runDecomposition}
-        onAnswer={decomposition.answer}>
+        onAnswer={decomposition.answer}
+        onClose={decomposition.reset}>
         {decomposition.state.result ? (
           <DecompositionResultView
             result={decomposition.state.result}
@@ -100,7 +103,10 @@ export function TaskAIPanel({ task, onApplySubtasks }: TaskAIPanelProps) {
         disabled={!hasKey}
         onRun={() => statusUpdate.run(task)}>
         {statusUpdate.state.result ? (
-          <StatusUpdateResultView result={statusUpdate.state.result} />
+          <StatusUpdateResultView
+            result={statusUpdate.state.result}
+            onClose={statusUpdate.reset}
+          />
         ) : null}
       </AgentCard>
 
@@ -115,7 +121,13 @@ export function TaskAIPanel({ task, onApplySubtasks }: TaskAIPanelProps) {
         runLabel={STRINGS.ai.prioritize}
         disabled={!hasKey}
         onRun={() => prioritization.run(tasks)}
-        onAnswer={prioritization.answer}>
+        onAnswer={prioritization.answer}
+        onClose={prioritization.reset}
+        resultText={
+          prioritization.state.result
+            ? serializePrioritizationResult(prioritization.state.result)
+            : undefined
+        }>
         {prioritization.state.result ? (
           <PrioritizationResultView result={prioritization.state.result} />
         ) : null}
@@ -131,7 +143,13 @@ export function TaskAIPanel({ task, onApplySubtasks }: TaskAIPanelProps) {
         clarifyingQuestion={null}
         runLabel={STRINGS.ai.blockers}
         disabled={!hasKey}
-        onRun={() => blocker.run(tasks)}>
+        onRun={() => blocker.run(tasks)}
+        onClose={blocker.reset}
+        resultText={
+          blocker.state.result
+            ? serializeBlockerResult(blocker.state.result)
+            : undefined
+        }>
         {blocker.state.result ? <BlockerResultView result={blocker.state.result} /> : null}
       </AgentCard>
     </View>
