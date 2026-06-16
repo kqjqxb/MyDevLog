@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, ListRenderItem, StyleSheet, View } from 'react-native';
+import { Alert, Dimensions, FlatList, ListRenderItem, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ClipboardList } from 'lucide-react-native';
@@ -131,6 +131,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.xxl,
+    paddingBottom: Dimensions.get('window').height * 0.23,
   },
 });

@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     right: SPACING.xl,
-    bottom: SPACING.huge * 2.1,
+    bottom: Dimensions.get('window').height * 0.14,
   },
   fabWrap: {
     alignItems: 'center',
