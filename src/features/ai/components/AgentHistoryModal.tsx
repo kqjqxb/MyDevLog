@@ -17,6 +17,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AlertTriangle,
+  Check,
+  Copy,
   Layers,
   MessageSquare,
   Sparkles,
@@ -25,7 +27,7 @@ import {
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import { COLORS, RADIUS, SPACING } from '@/shared/constants';
-import { GlassCard, GradientButton, ThemedText } from '@/shared/components';
+import { GlassCard, ThemedText } from '@/shared/components';
 import { AgentHistoryEntry } from '@/shared/types';
 import { relativeTime } from '@/shared/utils';
 
@@ -43,33 +45,151 @@ const AGENT_META: Record<
 };
 
 // ---------------------------------------------------------------------------
-// Result parser — detects "1. Title\nDesc" or "(1) Title\nDesc" in any text
+// Result parsing
 // ---------------------------------------------------------------------------
 
 type ParsedBlock =
   | { kind: 'text'; content: string }
-  | { kind: 'numbered'; rank: number; title: string; description: string };
+  | { kind: 'numbered'; rank: number; title: string; description: string }
+  | { kind: 'blocker-dep'; blocker: string; blocked: string; reason: string }
+  | { kind: 'blocker-stale'; title: string; days: number; recommendation: string };
 
-function parseFullResult(text: string): ParsedBlock[] {
+function parseFullResult(text: string, agent: AgentHistoryEntry['agent']): ParsedBlock[] {
+  if (agent === 'blocker') return parseBlockerResult(text);
+  return parseNumberedResult(text);
+}
+
+/**
+ * Line-by-line scan: numbered items delimited by "N." or "(N)" start lines,
+ * description is all non-numbered lines that follow until the next numbered item.
+ * Handles items separated by single newlines (not just double-newlines).
+ */
+function parseNumberedResult(text: string): ParsedBlock[] {
   const blocks: ParsedBlock[] = [];
-  const paragraphs = text.split(/\n\n+/);
+  const lines = text.split('\n');
 
-  for (const para of paragraphs) {
-    const trimmed = para.trim();
-    if (!trimmed) continue;
-    // Match "1. Title" or "(1) Title", then optional newline + description
-    const m = trimmed.match(/^(?:(\d+)\.\s+|\((\d+)\)\s+)(.+?)(?:\n([\s\S]*))?$/);
+  let currentItem: { rank: number; title: string; descLines: string[] } | null = null;
+  let textLines: string[] = [];
+
+  const flushText = () => {
+    const content = textLines.join(' ').trim();
+    if (content) blocks.push({ kind: 'text', content });
+    textLines = [];
+  };
+
+  const flushItem = () => {
+    if (!currentItem) return;
+    blocks.push({
+      kind: 'numbered',
+      rank: currentItem.rank,
+      title: currentItem.title,
+      description: currentItem.descLines.join(' ').trim(),
+    });
+    currentItem = null;
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const m = trimmed.match(/^(?:(\d+)\.\s+|\((\d+)\)\s+)(.+)$/);
     if (m) {
-      blocks.push({
-        kind: 'numbered',
+      flushText();
+      flushItem();
+      currentItem = {
         rank: parseInt((m[1] ?? m[2])!, 10),
         title: m[3]!.trim(),
-        description: m[4]?.trim() ?? '',
-      });
+        descLines: [],
+      };
+    } else if (currentItem) {
+      if (trimmed) currentItem.descLines.push(trimmed);
     } else {
-      blocks.push({ kind: 'text', content: trimmed });
+      if (trimmed) {
+        textLines.push(trimmed);
+      } else {
+        flushText();
+      }
     }
   }
+
+  flushText();
+  flushItem();
+
+  return blocks;
+}
+
+/**
+ * Parses the format produced by serializeBlockerResult:
+ *   summary
+ *   DEPENDENCIES:
+ *   blockerTitle → blocks → blockedTitle
+ *   reason
+ *   STALE WORK:
+ *   title (Xd in progress)
+ *   recommendation
+ */
+function parseBlockerResult(text: string): ParsedBlock[] {
+  const blocks: ParsedBlock[] = [];
+  const lines = text.split('\n');
+
+  let section: 'text' | 'deps' | 'stale' = 'text';
+  let textLines: string[] = [];
+  let pendingDep: { blocker: string; blocked: string } | null = null;
+  let pendingStale: { title: string; days: number } | null = null;
+
+  const flushText = () => {
+    const content = textLines.join(' ').trim();
+    if (content) blocks.push({ kind: 'text', content });
+    textLines = [];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed === 'DEPENDENCIES:') {
+      flushText();
+      section = 'deps';
+      continue;
+    }
+    if (trimmed === 'STALE WORK:') {
+      if (pendingDep) {
+        blocks.push({ kind: 'blocker-dep', blocker: pendingDep.blocker, blocked: pendingDep.blocked, reason: '' });
+        pendingDep = null;
+      }
+      flushText();
+      section = 'stale';
+      continue;
+    }
+    if (!trimmed) continue;
+
+    if (section === 'text') {
+      textLines.push(trimmed);
+    } else if (section === 'deps') {
+      const depMatch = trimmed.match(/^(.+?)\s*→\s*blocks\s*→\s*(.+)$/);
+      if (depMatch) {
+        if (pendingDep) {
+          blocks.push({ kind: 'blocker-dep', blocker: pendingDep.blocker, blocked: pendingDep.blocked, reason: '' });
+        }
+        pendingDep = { blocker: depMatch[1]!.trim(), blocked: depMatch[2]!.trim() };
+      } else if (pendingDep) {
+        blocks.push({ kind: 'blocker-dep', blocker: pendingDep.blocker, blocked: pendingDep.blocked, reason: trimmed });
+        pendingDep = null;
+      }
+    } else if (section === 'stale') {
+      const staleMatch = trimmed.match(/^(.+?)\s*\((\d+)d in progress\)$/);
+      if (staleMatch) {
+        if (pendingStale) {
+          blocks.push({ kind: 'blocker-stale', title: pendingStale.title, days: pendingStale.days, recommendation: '' });
+        }
+        pendingStale = { title: staleMatch[1]!.trim(), days: parseInt(staleMatch[2]!, 10) };
+      } else if (pendingStale) {
+        blocks.push({ kind: 'blocker-stale', title: pendingStale.title, days: pendingStale.days, recommendation: trimmed });
+        pendingStale = null;
+      }
+    }
+  }
+
+  flushText();
+  if (pendingDep) blocks.push({ kind: 'blocker-dep', blocker: pendingDep.blocker, blocked: pendingDep.blocked, reason: '' });
+  if (pendingStale) blocks.push({ kind: 'blocker-stale', title: pendingStale.title, days: pendingStale.days, recommendation: '' });
 
   return blocks;
 }
@@ -134,7 +254,7 @@ export function AgentHistoryModal({ entry, onClose }: Props) {
   if (!visible || !entry) return null;
 
   const meta = AGENT_META[entry.agent];
-  const blocks = parseFullResult(entry.fullResult ?? entry.summary);
+  const blocks = parseFullResult(entry.fullResult ?? entry.summary, entry.agent);
 
   return (
     <Modal
@@ -152,7 +272,6 @@ export function AgentHistoryModal({ entry, onClose }: Props) {
       <Animated.View style={[styles.sheet, sheetStyle]}>
         {/* ── Header ─────────────────────────────────────────────────── */}
         <View style={[styles.header, { paddingTop: insets.top + SPACING.lg }]}>
-          {/* gradient rendered as bg layer so layout stays on the View */}
           <LinearGradient
             colors={['#7C5CFC', '#5B3FD4']}
             start={{ x: 0, y: 0 }}
@@ -194,10 +313,17 @@ export function AgentHistoryModal({ entry, onClose }: Props) {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          {blocks.map((block, i) =>
-            block.kind === 'numbered' ? (
-              <NumberedCard key={i} block={block} />
-            ) : (
+          {blocks.map((block, i) => {
+            if (block.kind === 'numbered') {
+              return <NumberedCard key={i} block={block} />;
+            }
+            if (block.kind === 'blocker-dep') {
+              return <BlockerDepCard key={i} block={block} />;
+            }
+            if (block.kind === 'blocker-stale') {
+              return <BlockerStaleCard key={i} block={block} />;
+            }
+            return (
               <ThemedText
                 key={i}
                 variant="body"
@@ -205,8 +331,8 @@ export function AgentHistoryModal({ entry, onClose }: Props) {
                 style={styles.textBlock}>
                 {block.content}
               </ThemedText>
-            ),
-          )}
+            );
+          })}
         </ScrollView>
 
         {/* ── Footer ─────────────────────────────────────────────────── */}
@@ -215,17 +341,24 @@ export function AgentHistoryModal({ entry, onClose }: Props) {
             styles.footer,
             { paddingBottom: Math.max(insets.bottom, SPACING.lg) + SPACING.md },
           ]}>
-          <GradientButton
-            label={copied ? 'Copied!' : 'Copy Result'}
-            gradient="primary"
-            onPress={handleCopy}
-            style={styles.footerPrimary}
-          />
-          <Pressable onPress={handleClose} style={styles.closeTextBtn}>
-            <ThemedText variant="bodyMedium" color={COLORS.textSecondary}>
-              Close
-            </ThemedText>
-          </Pressable>
+          <View style={styles.buttonRow}>
+            <Pressable onPress={handleCopy} style={styles.actionBtn}>
+              {copied ? (
+                <Check color={COLORS.success} size={16} />
+              ) : (
+                <Copy color={COLORS.textSecondary} size={16} />
+              )}
+              <ThemedText variant="caption" color={copied ? COLORS.success : COLORS.textSecondary}>
+                {copied ? 'Copied!' : 'Copy Result'}
+              </ThemedText>
+            </Pressable>
+            <Pressable onPress={handleClose} style={styles.actionBtn}>
+              <X color={COLORS.textTertiary} size={16} />
+              <ThemedText variant="caption" color={COLORS.textTertiary}>
+                Close
+              </ThemedText>
+            </Pressable>
+          </View>
         </View>
       </Animated.View>
     </Modal>
@@ -264,6 +397,57 @@ function NumberedCard({ block }: NumberedCardProps) {
         </View>
       </View>
     </GlassCard>
+  );
+}
+
+interface BlockerDepCardProps {
+  block: Extract<ParsedBlock, { kind: 'blocker-dep' }>;
+}
+
+function BlockerDepCard({ block }: BlockerDepCardProps) {
+  return (
+    <View style={styles.blockerDepCard}>
+      <View style={styles.depRow}>
+        <ThemedText variant="bodyMedium" style={styles.depTitle} numberOfLines={2}>
+          {block.blocker}
+        </ThemedText>
+        <ThemedText variant="caption" color={COLORS.danger} style={styles.blocksLabel}>
+          blocks
+        </ThemedText>
+        <ThemedText variant="bodyMedium" style={styles.depTitle} numberOfLines={2}>
+          {block.blocked}
+        </ThemedText>
+      </View>
+      {block.reason ? (
+        <ThemedText variant="secondary" color={COLORS.textSecondary} style={styles.cardDesc}>
+          {block.reason}
+        </ThemedText>
+      ) : null}
+    </View>
+  );
+}
+
+interface BlockerStaleCardProps {
+  block: Extract<ParsedBlock, { kind: 'blocker-stale' }>;
+}
+
+function BlockerStaleCard({ block }: BlockerStaleCardProps) {
+  return (
+    <View style={styles.blockerStaleCard}>
+      <View style={styles.staleHeader}>
+        <ThemedText variant="bodyMedium" style={styles.depTitle} numberOfLines={2}>
+          {block.title}
+        </ThemedText>
+        <ThemedText variant="caption" color={COLORS.warning}>
+          {block.days}d
+        </ThemedText>
+      </View>
+      {block.recommendation ? (
+        <ThemedText variant="secondary" color={COLORS.textSecondary} style={styles.cardDesc}>
+          {block.recommendation}
+        </ThemedText>
+      ) : null}
+    </View>
   );
 }
 
@@ -347,22 +531,66 @@ const styles = StyleSheet.create({
   },
   cardDesc: {
     lineHeight: 19,
+    marginTop: 4,
+  },
+
+  // Blocker dep card
+  blockerDepCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.danger,
+    marginBottom: 2,
+    gap: SPACING.xs,
+  },
+  depRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+  },
+  depTitle: {
+    flex: 1,
+  },
+  blocksLabel: {
+    flexShrink: 0,
+  },
+
+  // Blocker stale card
+  blockerStaleCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.warning,
+    marginBottom: 2,
+    gap: SPACING.xs,
+  },
+  staleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
   },
 
   // Footer
   footer: {
     paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.lg,
-    gap: SPACING.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
     backgroundColor: '#1C1C2E',
   },
-  footerPrimary: {
-    width: '100%',
-  },
-  closeTextBtn: {
+  buttonRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
+    gap: SPACING.lg,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    paddingVertical: SPACING.sm,
   },
 });

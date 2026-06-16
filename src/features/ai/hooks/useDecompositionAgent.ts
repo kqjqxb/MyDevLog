@@ -6,6 +6,14 @@ import {
   runDecomposition,
 } from '@/services/ai';
 import { AgentState, DecompositionResult } from '@/shared/types';
+
+export function serializeDecompositionResult(result: DecompositionResult): string {
+  return [
+    result.rationale,
+    '',
+    ...result.subtasks.map((s, i) => `${i + 1}. ${s}`),
+  ].join('\n');
+}
 import { toAgentErrorMessage } from '@/shared/hooks/agentError';
 import { useSettingsStore } from '@/store';
 
@@ -40,6 +48,7 @@ export function useDecompositionAgent() {
         agent: 'decomposition',
         label: 'Break Down Task',
         summary: `${turn.result.subtasks.length} subtasks suggested`,
+        fullResult: serializeDecompositionResult(turn.result),
       });
     },
     [addHistory],

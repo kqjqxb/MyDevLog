@@ -28,6 +28,7 @@ export function useStatusUpdateAgent() {
           agent: 'status-update',
           label: 'Status Update',
           summary: `${task.title} — ${result.state}`,
+          fullResult: result.message,
         });
       } catch (error) {
         setState({ phase: 'error', result: null, clarifyingQuestion: null, error: toAgentErrorMessage(error) });
