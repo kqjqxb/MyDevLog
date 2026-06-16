@@ -17,8 +17,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AlertTriangle,
-  Check,
-  Copy,
   Layers,
   MessageSquare,
   Sparkles,
@@ -27,7 +25,7 @@ import {
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import { COLORS, RADIUS, SPACING } from '@/shared/constants';
-import { GlassCard, ThemedText } from '@/shared/components';
+import { GlassCard, GradientButton, ThemedText } from '@/shared/components';
 import { AgentHistoryEntry } from '@/shared/types';
 import { relativeTime } from '@/shared/utils';
 
@@ -341,24 +339,17 @@ export function AgentHistoryModal({ entry, onClose }: Props) {
             styles.footer,
             { paddingBottom: Math.max(insets.bottom, SPACING.lg) + SPACING.md },
           ]}>
-          <View style={styles.buttonRow}>
-            <Pressable onPress={handleCopy} style={styles.actionBtn}>
-              {copied ? (
-                <Check color={COLORS.success} size={16} />
-              ) : (
-                <Copy color={COLORS.textSecondary} size={16} />
-              )}
-              <ThemedText variant="caption" color={copied ? COLORS.success : COLORS.textSecondary}>
-                {copied ? 'Copied!' : 'Copy Result'}
-              </ThemedText>
-            </Pressable>
-            <Pressable onPress={handleClose} style={styles.actionBtn}>
-              <X color={COLORS.textTertiary} size={16} />
-              <ThemedText variant="caption" color={COLORS.textTertiary}>
-                Close
-              </ThemedText>
-            </Pressable>
-          </View>
+          <GradientButton
+            label={copied ? 'Copied!' : 'Copy Result'}
+            gradient="primary"
+            onPress={handleCopy}
+            style={styles.footerPrimary}
+          />
+          <Pressable onPress={handleClose} style={styles.closeTextBtn}>
+            <ThemedText variant="bodyMedium" color={COLORS.textSecondary}>
+              Close
+            </ThemedText>
+          </Pressable>
         </View>
       </Animated.View>
     </Modal>
@@ -578,19 +569,16 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.lg,
+    gap: SPACING.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
     backgroundColor: '#1C1C2E',
   },
-  buttonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.lg,
+  footerPrimary: {
+    width: '100%',
   },
-  actionBtn: {
-    flexDirection: 'row',
+  closeTextBtn: {
     alignItems: 'center',
-    gap: SPACING.xs,
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.md,
   },
 });

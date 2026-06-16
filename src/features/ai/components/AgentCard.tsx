@@ -139,22 +139,16 @@ export function AgentCard({
           {(resultText || onClose) ? (
             <View style={styles.resultActions}>
               {resultText ? (
-                <Pressable
+                <GradientButton
+                  label={copied ? 'Copied!' : 'Copy Result'}
+                  gradient="primary"
                   onPress={handleCopy}
-                  style={[styles.copyButton, copied && styles.copyButtonActive]}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <ThemedText
-                    variant="secondary"
-                    color={copied ? COLORS.success : '#7C5CFC'}>
-                    {copied ? 'Copied!' : 'Copy'}
-                  </ThemedText>
-                </Pressable>
+                  style={styles.copyBtn}
+                />
               ) : null}
               {onClose ? (
-                <Pressable
-                  onPress={onClose}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <ThemedText variant="secondary" color={COLORS.textTertiary}>
+                <Pressable onPress={onClose} style={styles.closeTextBtn}>
+                  <ThemedText variant="bodyMedium" color={COLORS.textSecondary}>
                     Close
                   </ThemedText>
                 </Pressable>
@@ -207,23 +201,18 @@ const styles = StyleSheet.create({
     marginTop: SPACING.lg,
   },
   resultActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: SPACING.md,
     marginTop: SPACING.lg,
     paddingTop: SPACING.md,
+    gap: SPACING.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
   },
-  copyButton: {
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(124,92,252,0.4)',
+  copyBtn: {
+    width: '100%',
   },
-  copyButtonActive: {
-    borderColor: COLORS.success,
+  closeTextBtn: {
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    marginBottom: -SPACING.xl,
   },
 });
