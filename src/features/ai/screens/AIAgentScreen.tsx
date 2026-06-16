@@ -18,7 +18,12 @@ import {
   NoApiKeyNotice,
   PrioritizationResultView,
 } from '../components';
-import { useBlockerAgent, usePrioritizationAgent } from '../hooks';
+import {
+  useBlockerAgent,
+  usePrioritizationAgent,
+  serializePrioritizationResult,
+  serializeBlockerResult,
+} from '../hooks';
 
 /**
  * Dedicated AI tab. Focuses on the two backlog-wide agents (prioritization &
@@ -71,7 +76,13 @@ export function AIAgentScreen() {
           runLabel={STRINGS.ai.prioritize}
           disabled={disabled}
           onRun={runPrioritize}
-          onAnswer={prioritization.answer}>
+          onAnswer={prioritization.answer}
+          onClose={prioritization.reset}
+          resultText={
+            prioritization.state.result
+              ? serializePrioritizationResult(prioritization.state.result)
+              : undefined
+          }>
           {prioritization.state.result ? (
             <PrioritizationResultView result={prioritization.state.result} />
           ) : null}
@@ -87,7 +98,13 @@ export function AIAgentScreen() {
           clarifyingQuestion={null}
           runLabel={STRINGS.ai.blockers}
           disabled={disabled}
-          onRun={runBlocker}>
+          onRun={runBlocker}
+          onClose={blocker.reset}
+          resultText={
+            blocker.state.result
+              ? serializeBlockerResult(blocker.state.result)
+              : undefined
+          }>
           {blocker.state.result ? <BlockerResultView result={blocker.state.result} /> : null}
         </AgentCard>
 

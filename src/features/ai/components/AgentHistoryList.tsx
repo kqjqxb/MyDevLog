@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { History } from 'lucide-react-native';
 
 import { COLORS, SPACING } from '@/shared/constants';
@@ -7,15 +7,20 @@ import { GlassCard, ThemedText } from '@/shared/components';
 import { AgentHistoryEntry } from '@/shared/types';
 import { relativeTime } from '@/shared/utils';
 
+import { AgentHistoryModal } from './AgentHistoryModal';
+
 interface Props {
   history: AgentHistoryEntry[];
 }
 
 /** Compact log of recent AI agent runs (persisted across app restarts). */
 export function AgentHistoryList({ history }: Props) {
+  const [selectedEntry, setSelectedEntry] = useState<AgentHistoryEntry | null>(null);
+
   if (history.length === 0) {
     return null;
   }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -26,9 +31,14 @@ export function AgentHistoryList({ history }: Props) {
       </View>
       <GlassCard flat>
         {history.map((entry, index) => (
-          <View
+          <Pressable
             key={entry.id}
-            style={[styles.row, index < history.length - 1 && styles.divider]}>
+            onPress={() => setSelectedEntry(entry)}
+            style={({ pressed }) => [
+              styles.row,
+              index < history.length - 1 && styles.divider,
+              pressed && styles.rowPressed,
+            ]}>
             <View style={styles.rowText}>
               <ThemedText variant="bodyMedium">{entry.label}</ThemedText>
               <ThemedText
@@ -41,9 +51,14 @@ export function AgentHistoryList({ history }: Props) {
             <ThemedText variant="caption" color={COLORS.textTertiary}>
               {relativeTime(entry.createdAt)}
             </ThemedText>
-          </View>
+          </Pressable>
         ))}
       </GlassCard>
+
+      <AgentHistoryModal
+        entry={selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+      />
     </View>
   );
 }
@@ -65,6 +80,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: SPACING.md,
     paddingVertical: SPACING.md,
+  },
+  rowPressed: {
+    opacity: 0.6,
   },
   divider: {
     borderBottomWidth: StyleSheet.hairlineWidth,

@@ -6,5 +6,6 @@ export * from './StatusUpdateResultView';
 export * from './BlockerResultView';
 export * from './AnimatedAIBackdrop';
 export * from './AgentHistoryList';
+export * from './AgentHistoryModal';
 export * from './NoApiKeyNotice';
 export * from './TaskAIPanel';

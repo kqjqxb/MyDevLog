@@ -9,6 +9,14 @@ import { AgentState, PrioritizationResult, Task } from '@/shared/types';
 import { toAgentErrorMessage } from '@/shared/hooks/agentError';
 import { useSettingsStore } from '@/store';
 
+export function serializePrioritizationResult(result: PrioritizationResult): string {
+  return [
+    result.summary,
+    '',
+    ...result.ranked.map((item, i) => `${i + 1}. ${item.title}\n${item.reasoning}`),
+  ].join('\n');
+}
+
 const INITIAL: AgentState<PrioritizationResult> = {
   phase: 'idle',
   result: null,
@@ -40,6 +48,7 @@ export function usePrioritizationAgent() {
         agent: 'prioritization',
         label: 'Prioritize My Day',
         summary: turn.result.summary,
+        fullResult: serializePrioritizationResult(turn.result),
       });
     },
     [addHistory],

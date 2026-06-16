@@ -1,8 +1,9 @@
-import React, { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { ReactNode, useCallback, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AnimatePresence, MotiView } from 'moti';
 import LinearGradient from 'react-native-linear-gradient';
 import { RotateCw, TriangleAlert } from 'lucide-react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 
 import {
   COLORS,
@@ -34,6 +35,8 @@ interface AgentCardProps {
   disabled?: boolean;
   onRun: () => void;
   onAnswer?: (text: string) => void;
+  onClose?: () => void;
+  resultText?: string;
   children?: ReactNode;
 }
 
@@ -53,8 +56,19 @@ export function AgentCard({
   disabled = false,
   onRun,
   onAnswer,
+  onClose,
+  resultText,
   children,
 }: AgentCardProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    if (!resultText) return;
+    Clipboard.setString(resultText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [resultText]);
+
   const loading = phase === 'loading';
   const showResult = phase === 'success';
   const showClarify = phase === 'clarifying' && clarifyingQuestion && onAnswer;
@@ -119,7 +133,34 @@ export function AgentCard({
 
       {showClarify ? <ClarifyBox question={clarifyingQuestion} onAnswer={onAnswer} /> : null}
 
-      {showResult ? <View style={styles.result}>{children}</View> : null}
+      {showResult ? (
+        <View style={styles.result}>
+          {children}
+          <View style={styles.resultActions}>
+            {resultText ? (
+              <Pressable
+                onPress={handleCopy}
+                style={[styles.copyButton, copied && styles.copyButtonActive]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <ThemedText
+                  variant="secondary"
+                  color={copied ? COLORS.success : '#7C5CFC'}>
+                  {copied ? 'Copied!' : 'Copy'}
+                </ThemedText>
+              </Pressable>
+            ) : null}
+            {onClose ? (
+              <Pressable
+                onPress={onClose}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <ThemedText variant="secondary" color={COLORS.textTertiary}>
+                  Close
+                </ThemedText>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
     </GlassCard>
   );
 }
@@ -162,5 +203,25 @@ const styles = StyleSheet.create({
   },
   result: {
     marginTop: SPACING.lg,
+  },
+  resultActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: SPACING.md,
+    marginTop: SPACING.lg,
+    paddingTop: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+  },
+  copyButton: {
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(124,92,252,0.4)',
+  },
+  copyButtonActive: {
+    borderColor: COLORS.success,
   },
 });

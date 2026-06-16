@@ -79,5 +79,7 @@ export interface AgentHistoryEntry {
   agent: 'prioritization' | 'decomposition' | 'status-update' | 'blocker';
   label: string;
   summary: string;
+  /** Plain-text serialization of the full result, used by the history modal. */
+  fullResult?: string;
   createdAt: string; // ISO 8601
 }
