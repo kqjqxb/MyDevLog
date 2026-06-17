@@ -47,7 +47,9 @@ export function useDecompositionAgent() {
       addHistory({
         agent: 'decomposition',
         label: 'Break Down Task',
-        summary: `${turn.result.subtasks.length} subtasks suggested`,
+        summary: turn.result.subtasks.length > 0
+          ? `${turn.result.subtasks.length} subtasks suggested`
+          : 'No new subtasks needed',
         fullResult: serializeDecompositionResult(turn.result),
       });
     },

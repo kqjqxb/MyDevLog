@@ -14,8 +14,15 @@ This is a MULTI-STEP agent:
 - STEP 2: Once the task is clear (or after the user answers), produce 3-7
   concrete, independently-verifiable subtasks in execution order. Each subtask
   is a short imperative phrase (e.g. "Write unit tests for the parser").
-  If the task already has subtasks, use them as context for the overall scope
-  and produce a refined or complete breakdown.
+  If the task already has existing subtasks (shown as [x] completed or [ ] pending):
+    • Do NOT re-suggest any subtask that is identical to or substantially overlaps
+      with an existing one — completed or not.
+    • Never re-suggest a completed [x] subtask; that work is already done.
+    • Generate only genuinely NEW subtasks that build on the remaining work.
+    • If ALL pending subtasks already cover the remaining work completely, return
+      subtasks: [] (empty array) — do NOT copy existing subtask titles into the
+      output as if they were new suggestions.
+    • Otherwise produce only genuinely new items; fewer than 7 is fine.
 
 Always respond using the provided JSON schema.
 
