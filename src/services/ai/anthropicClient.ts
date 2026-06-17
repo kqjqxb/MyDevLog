@@ -1,6 +1,23 @@
 import axios, { AxiosInstance, isAxiosError } from 'axios';
 
+import { useNotificationStore } from '@/store/notificationStore';
 import { ANTHROPIC_CONFIG, AnthropicError } from './config';
+
+type BannerEntry = { variant: 'invalid_key' | 'rate_limit' | 'network'; title: string; subtitle: string };
+
+const BANNER_MAP: Record<string, BannerEntry> = {
+  'missing-key': { variant: 'invalid_key', title: 'API Key Required',     subtitle: 'Tap to add your Anthropic API key' },
+  'auth':        { variant: 'invalid_key', title: 'Invalid API Key',      subtitle: 'Tap to check your settings' },
+  'rate-limit':  { variant: 'rate_limit',  title: 'Rate Limited',         subtitle: 'Too many requests — try again shortly' },
+  'network':     { variant: 'network',     title: 'Connection Error',     subtitle: 'Check your internet connection' },
+  'parse':       { variant: 'network',     title: 'Unexpected Response',  subtitle: 'Claude returned an invalid response' },
+  'unknown':     { variant: 'network',     title: 'Something Went Wrong', subtitle: 'An unexpected error occurred' },
+};
+
+function notifyError(error: AnthropicError): void {
+  const entry: BannerEntry = BANNER_MAP[error.kind] ?? BANNER_MAP['unknown']!;
+  useNotificationStore.getState().showBanner(entry);
+}
 
 export interface ClaudeMessage {
   role: 'user' | 'assistant';
@@ -50,7 +67,6 @@ function sleep(ms: number): Promise<void> {
 function mapAxiosError(error: unknown): AnthropicError {
   if (isAxiosError(error)) {
     const status = error.response?.status;
-    console.error('[Anthropic] HTTP error', status, error.response?.data);
     if (status === 401 || status === 403) {
       return new AnthropicError('auth', 'Invalid or unauthorized API key.');
     }
@@ -63,7 +79,6 @@ function mapAxiosError(error: unknown): AnthropicError {
     const apiMessage = (error.response?.data as { error?: { message?: string } })?.error?.message;
     return new AnthropicError('unknown', apiMessage ?? error.message);
   }
-  console.error('[Anthropic] Unexpected error', error);
   return new AnthropicError('unknown', 'Unexpected error contacting Claude.');
 }
 
@@ -75,7 +90,9 @@ export async function sendMessage(options: SendOptions): Promise<string> {
   const { apiKey, system, messages, maxTokens, jsonSchema } = options;
 
   if (!apiKey.trim()) {
-    throw new AnthropicError('missing-key', 'No API key configured.');
+    const missingKeyError = new AnthropicError('missing-key', 'No API key configured.');
+    notifyError(missingKeyError);
+    throw missingKeyError;
   }
 
   const client = buildClient(apiKey);
@@ -122,11 +139,14 @@ export async function sendMessage(options: SendOptions): Promise<string> {
         await sleep(2 ** attempt * 600);
         continue;
       }
+      notifyError(mapped);
       throw mapped;
     }
   }
 
-  throw lastError ?? new AnthropicError('unknown', 'Request failed.');
+  const finalError = lastError ?? new AnthropicError('unknown', 'Request failed.');
+  notifyError(finalError);
+  throw finalError;
 }
 
 /**

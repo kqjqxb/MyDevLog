@@ -6,10 +6,11 @@ import { NavigationContainer } from '@react-navigation/native';
 
 import { OnboardingScreen } from '@/features/onboarding';
 import { COLORS } from '@/shared/constants';
-import { ErrorBoundary } from '@/shared/components';
+import { ApiKeyErrorBanner, ErrorBoundary } from '@/shared/components';
 import { useSettingsStore } from '@/store';
 
 import { navigationTheme, RootNavigator } from './navigation';
+import { navigationRef, navigateToSettings } from './navigation/navigationRef';
 import { SplashScreen } from './SplashScreen';
 import { StatusBar } from 'react-native';
 import { useBootstrap } from './useBootstrap';
@@ -34,8 +35,9 @@ export function App() {
           <View style={styles.flex}>
             {showMain ? (
               onboardingCompleted ? (
-                <NavigationContainer theme={navigationTheme}>
+                <NavigationContainer ref={navigationRef} theme={navigationTheme}>
                   <RootNavigator />
+                  <ApiKeyErrorBanner onPress={navigateToSettings} />
                 </NavigationContainer>
               ) : (
                 <OnboardingScreen />

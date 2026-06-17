@@ -19,3 +19,4 @@ export * from './ErrorBoundary';
 export * from './SelectablePills';
 export * from './FilterTabs';
 export * from './FormError';
+export * from './ApiKeyErrorBanner';
