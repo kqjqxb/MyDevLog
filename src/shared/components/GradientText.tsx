@@ -14,6 +14,7 @@ interface GradientTextProps {
   gradient?: GradientName;
   height?: number;
   width?: number;
+  centered?: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ export function GradientText({
   gradient = 'accent',
   height,
   width = 280,
+  centered = false,
 }: GradientTextProps) {
   const stops = GRADIENTS[gradient];
   const h = height ?? fontSize * 1.3;
@@ -47,8 +49,9 @@ export function GradientText({
         fill="url(#grad)"
         fontSize={fontSize}
         fontFamily={FONTS.heavy}
-        x={0}
-        y={fontSize}>
+        x={centered ? width / 2 : 0}
+        y={fontSize}
+        textAnchor={centered ? 'middle' : 'start'}>
         {text}
       </SvgText>
     </Svg>

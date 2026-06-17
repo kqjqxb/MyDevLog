@@ -187,6 +187,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     lineHeight: 17,
+    marginBottom: SPACING.sm,
   },
   actions: {
     flexDirection: 'row',

@@ -88,8 +88,8 @@ export function SplashScreen({ ready, onFinish }: SplashScreenProps) {
         </Animated.View>
 
         <Animated.View style={[styles.textWrap, textStyle]}>
-          <GradientText text="DevLog" gradient="accent" fontSize={34} width={160} />
-          <ThemedText variant="secondary" color={COLORS.textSecondary}>
+          <GradientText text="DevLog" gradient="accent" fontSize={34} width={160} centered />
+          <ThemedText variant="secondary" color={COLORS.textSecondary} style={{ textAlign: 'center' }}>
             AI-powered task tracker
           </ThemedText>
         </Animated.View>
