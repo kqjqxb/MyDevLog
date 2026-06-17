@@ -17,6 +17,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AlertTriangle,
+  ArrowDown,
   Layers,
   MessageSquare,
   Sparkles,
@@ -290,12 +291,12 @@ export function AgentHistoryModal({ entry, onClose }: Props) {
                 {meta.description}
               </ThemedText>
             </View>
-            <Pressable
+            {/* <Pressable
               onPress={handleClose}
               style={styles.closeIconBtn}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <X color="rgba(255,255,255,0.85)" size={20} />
-            </Pressable>
+            </Pressable> */}
           </View>
 
           <ThemedText
@@ -397,20 +398,23 @@ interface BlockerDepCardProps {
 
 function BlockerDepCard({ block }: BlockerDepCardProps) {
   return (
-    <View style={styles.blockerDepCard}>
-      <View style={styles.depRow}>
-        <ThemedText variant="bodyMedium" style={styles.depTitle} numberOfLines={2}>
+    <View style={styles.linkCard}>
+      <View style={styles.node}>
+        <ThemedText variant="bodyMedium" numberOfLines={2} style={styles.nodeTitle}>
           {block.blocker}
         </ThemedText>
-        <ThemedText variant="caption" color={COLORS.danger} style={styles.blocksLabel}>
+        <ThemedText variant="caption" color={COLORS.warning}>
           blocks
         </ThemedText>
-        <ThemedText variant="bodyMedium" style={styles.depTitle} numberOfLines={2}>
+      </View>
+      <ArrowDown color={COLORS.textTertiary} size={16} style={styles.arrow} />
+      <View style={styles.node}>
+        <ThemedText variant="bodyMedium" numberOfLines={1}>
           {block.blocked}
         </ThemedText>
       </View>
       {block.reason ? (
-        <ThemedText variant="secondary" color={COLORS.textSecondary} style={styles.cardDesc}>
+        <ThemedText variant="secondary" color={COLORS.textSecondary} style={styles.depReason}>
           {block.reason}
         </ThemedText>
       ) : null}
@@ -426,7 +430,7 @@ function BlockerStaleCard({ block }: BlockerStaleCardProps) {
   return (
     <View style={styles.blockerStaleCard}>
       <View style={styles.staleHeader}>
-        <ThemedText variant="bodyMedium" style={styles.depTitle} numberOfLines={2}>
+        <ThemedText variant="bodyMedium" style={styles.staleTitle} numberOfLines={2}>
           {block.title}
         </ThemedText>
         <ThemedText variant="caption" color={COLORS.warning}>
@@ -526,26 +530,30 @@ const styles = StyleSheet.create({
   },
 
   // Blocker dep card
-  blockerDepCard: {
+  linkCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.danger,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
     marginBottom: 2,
-    gap: SPACING.xs,
   },
-  depRow: {
+  node: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: SPACING.xs,
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
   },
-  depTitle: {
-    flex: 1,
+  nodeTitle: {
+    maxWidth: '80%',
   },
-  blocksLabel: {
-    flexShrink: 0,
+  arrow: {
+    alignSelf: 'center',
+    marginVertical: 2,
+  },
+  depReason: {
+    marginTop: SPACING.sm,
+    lineHeight: 18,
   },
 
   // Blocker stale card
@@ -563,6 +571,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: SPACING.sm,
+  },
+  staleTitle: {
+    flex: 1,
   },
 
   // Footer
