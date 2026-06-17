@@ -177,6 +177,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
+    marginVertical: SPACING.sm,
   },
   keyInput: {
     flex: 1,

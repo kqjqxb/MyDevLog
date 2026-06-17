@@ -72,41 +72,42 @@ export function SplashScreen({ ready, onFinish }: SplashScreenProps) {
 
   return (
     <Animated.View style={[styles.container, rootStyle]}>
-      <Animated.View style={[styles.logoWrap, logoStyle]}>
-        <GlowRing size={LOGO_SIZE + 28} gradient="accent" borderRadius={RADIUS.xxl} />
-        <View style={styles.logo}>
-          <LinearGradient
-            colors={GRADIENTS.accent}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            pointerEvents="none"
-            style={styles.fill}
-          />
-          <Check color={COLORS.white} size={44} strokeWidth={3} />
-        </View>
-      </Animated.View>
+      <View style={styles.content}>
+        <Animated.View style={[styles.logoWrap, logoStyle]}>
+          <GlowRing size={LOGO_SIZE + 28} gradient="accent" borderRadius={RADIUS.xxl} />
+          <View style={styles.logo}>
+            <LinearGradient
+              colors={GRADIENTS.accent}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              pointerEvents="none"
+              style={styles.fill}
+            />
+            <Check color={COLORS.white} size={44} strokeWidth={3} />
+          </View>
+        </Animated.View>
 
-      <Animated.View style={[styles.textWrap, textStyle, {
-        alignSelf: 'center',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }]}>
-        <GradientText text="DevLog" gradient="accent" fontSize={34} width={160} />
-        <ThemedText variant="secondary" color={COLORS.textSecondary}>
-          AI-powered task tracker
-        </ThemedText>
-      </Animated.View>
+        <Animated.View style={[styles.textWrap, textStyle]}>
+          <GradientText text="DevLog" gradient="accent" fontSize={34} width={160} />
+          <ThemedText variant="secondary" color={COLORS.textSecondary}>
+            AI-powered task tracker
+          </ThemedText>
+        </Animated.View>
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     backgroundColor: COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+  },
+  content: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoWrap: {
     alignItems: 'center',

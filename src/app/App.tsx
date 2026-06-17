@@ -53,5 +53,5 @@ export function App() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  flex: { flex: 1, backgroundColor: COLORS.background },
 });
