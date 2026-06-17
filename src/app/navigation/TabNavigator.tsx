@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   SharedValue,
@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LayoutGrid, Settings, Sparkles } from 'lucide-react-native';
@@ -15,6 +16,20 @@ import { SettingsScreen } from '@/features/settings';
 import { TaskListScreen } from '@/features/tasks';
 import { COLORS, STRINGS } from '@/shared/constants';
 import { ErrorBoundary } from '@/shared/components';
+
+import { RootStackParamList } from './types';
+
+// ─── Tab context ──────────────────────────────────────────────────────────────
+
+interface TabContextValue {
+  switchTab: (index: number) => void;
+}
+
+const TabContext = createContext<TabContextValue>({ switchTab: () => {} });
+
+export function useTabContext() {
+  return useContext(TabContext);
+}
 
 // ─── Animation constants ──────────────────────────────────────────────────────
 
@@ -146,7 +161,19 @@ export function TabNavigator() {
     [tx0, tx1, tx2, op0, op1, op2],
   );
 
+  const route = useRoute<RouteProp<RootStackParamList, 'Tabs'>>();
+  const rootNavigation = useNavigation();
+
+  useEffect(() => {
+    const tabIndex = route.params?.switchToTab;
+    if (tabIndex !== undefined) {
+      handleTabPress(tabIndex);
+      rootNavigation.setParams({ switchToTab: undefined });
+    }
+  }, [route.params?.switchToTab, handleTabPress, rootNavigation]);
+
   return (
+    <TabContext.Provider value={{ switchTab: handleTabPress }}>
     <View style={styles.root}>
       {/* Screen stack */}
       {TABS.map((tab, index) => (
@@ -182,6 +209,7 @@ export function TabNavigator() {
         </View>
       </View>
     </View>
+    </TabContext.Provider>
   );
 }
 

@@ -7,7 +7,7 @@ export type TabParamList = {
 };
 
 export type RootStackParamList = {
-  Tabs: NavigatorScreenParams<TabParamList> | undefined;
+  Tabs: { switchToTab?: number } | undefined;
   TaskDetail: { taskId: string };
   /** taskId omitted → create flow; present → edit flow. */
   TaskForm: { taskId?: string } | undefined;
