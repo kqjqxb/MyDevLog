@@ -13,12 +13,13 @@ interface Props {
 
 /**
  * Non-blocking advisory strip rendered at the top of aggregate agent results
- * when one or more tasks look like placeholder/test content. The overall
- * analysis still runs; this just informs the user which tasks were skipped
- * or may have produced unreliable output.
+ * when one or more tasks were genuinely skipped (all context fields are
+ * placeholder/gibberish). Tasks flagged with skipped=false are ranked normally
+ * and shown as soft inline notes — not here.
  */
 export function ContentWarningBanner({ warnings }: Props) {
-  if (warnings.length === 0) {
+  const skipped = warnings.filter(w => w.skipped);
+  if (skipped.length === 0) {
     return null;
   }
 
@@ -31,12 +32,12 @@ export function ContentWarningBanner({ warnings }: Props) {
       <View style={styles.header}>
         <AlertTriangle color={COLORS.warning} size={14} />
         <ThemedText variant="caption" color={COLORS.warning} style={styles.headerText}>
-          {warnings.length === 1
+          {skipped.length === 1
             ? '1 task skipped — looks like placeholder content'
-            : `${warnings.length} tasks skipped — look like placeholder content`}
+            : `${skipped.length} tasks skipped — look like placeholder content`}
         </ThemedText>
       </View>
-      {warnings.map(w => (
+      {skipped.map(w => (
         <View key={w.taskId} style={styles.row}>
           <ThemedText variant="secondary" color={COLORS.textSecondary} numberOfLines={1} style={styles.title}>
             {w.taskTitle}

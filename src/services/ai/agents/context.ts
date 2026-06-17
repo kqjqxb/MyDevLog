@@ -5,8 +5,11 @@ import { Task } from '@/shared/types';
  * Serialises tasks into a compact, model-friendly context block. Includes the
  * derived signals agents reason over (age in days, subtask progress) so the
  * model doesn't have to compute them.
+ *
+ * Pass includeSubtaskTitles=true for agents whose ContextScope has useSubtasks:true
+ * so the model can see actual subtask content during quality evaluation.
  */
-export function serializeTasks(tasks: Task[]): string {
+export function serializeTasks(tasks: Task[], includeSubtaskTitles = false): string {
   if (tasks.length === 0) {
     return '(no tasks)';
   }
@@ -22,6 +25,11 @@ export function serializeTasks(tasks: Task[]): string {
         `  ageDays: ${age}`,
         `  subtasks: ${done}/${total}`,
       ];
+      if (includeSubtaskTitles && task.subtasks && task.subtasks.length > 0) {
+        for (const sub of task.subtasks) {
+          parts.push(`    - [${sub.completed ? 'x' : ' '}] ${sub.title}`);
+        }
+      }
       if (task.description.trim()) {
         parts.push(`  description: ${task.description.trim()}`);
       }

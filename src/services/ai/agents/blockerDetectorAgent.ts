@@ -37,7 +37,7 @@ interface RawBlocker {
     recommendation: string;
   }>;
   summary: string;
-  contentWarnings: Array<{ taskId: string; taskTitle: string; reason: string }>;
+  contentWarnings: Array<{ taskId: string; taskTitle: string; reason: string; skipped: boolean }>;
 }
 
 const SCHEMA = {

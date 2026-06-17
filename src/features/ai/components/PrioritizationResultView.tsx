@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { MotiView } from 'moti';
 
@@ -15,6 +15,18 @@ interface Props {
 
 /** Ranked plan: a summary line then each task with its rank and reasoning. */
 export function PrioritizationResultView({ result }: Props) {
+  // Build a lookup for soft quality notes (skipped=false: task is ranked normally
+  // but its title/description are poor — show as a secondary inline note only).
+  const qualityNotes = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const w of result.contentWarnings) {
+      if (!w.skipped) {
+        map.set(w.taskId, w.reason);
+      }
+    }
+    return map;
+  }, [result.contentWarnings]);
+
   return (
     <View>
       <ContentWarningBanner warnings={result.contentWarnings} />
@@ -47,6 +59,11 @@ export function PrioritizationResultView({ result }: Props) {
             <ThemedText variant="secondary" color={COLORS.textSecondary} style={styles.reason}>
               {item.reasoning}
             </ThemedText>
+            {qualityNotes.has(item.taskId) && (
+              <ThemedText variant="secondary" color={COLORS.textTertiary} style={styles.qualityNote}>
+                {'Note: ' + qualityNotes.get(item.taskId)}
+              </ThemedText>
+            )}
           </View>
         </MotiView>
       ))}
@@ -79,5 +96,10 @@ const styles = StyleSheet.create({
   },
   reason: {
     lineHeight: 19,
+  },
+  qualityNote: {
+    lineHeight: 17,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });

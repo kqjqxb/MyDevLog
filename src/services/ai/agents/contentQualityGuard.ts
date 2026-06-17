@@ -49,16 +49,22 @@ function buildSingleTaskGuard(scope: ContextScope, subtaskInstruction: string): 
 function buildAggregateGuard(scope: ContextScope): string {
   if (scope.useSubtasks || scope.useNotes) {
     return (
-      `Content quality: While processing tasks, add a contentWarning only for tasks where ALL ` +
-      `of the following are absent or clearly placeholder/gibberish: ${scopeFields(scope)}. A ` +
-      `task with a nonsensical title but real subtasks has sufficient context and must NOT be ` +
-      `flagged. This is advisory only — still produce the full analysis for all other tasks.`
+      `Content quality: While processing tasks, emit a contentWarning for any task whose ` +
+      `title/description looks like random characters or placeholder text. Set skipped=true ` +
+      `only when ALL of the following are absent or clearly placeholder/gibberish: ` +
+      `${scopeFields(scope)} — meaning there is genuinely no context to work with. Set ` +
+      `skipped=false when title/description are poor but real subtask or note content ` +
+      `provides enough context to rank the task normally; in that case the reason should ` +
+      `note that the title needs cleanup but sufficient context exists. This is advisory ` +
+      `only — still produce the full analysis for all tasks.`
     );
   }
   return (
     `Content quality: While processing tasks, note any whose title or description appears to be ` +
     `random characters, placeholder text, or test data. Include them in the contentWarnings array ` +
-    `with a brief reason. This is advisory only — still produce the full analysis for all other tasks.`
+    `with skipped=true; phrase the reason as: "Can't assess dependencies or staleness without a ` +
+    `real description — title/description appear to be placeholder text." This is advisory only ` +
+    `— still produce the full analysis for all other tasks.`
   );
 }
 
@@ -108,8 +114,9 @@ export const CONTENT_WARNINGS_SCHEMA_FRAGMENT = {
       taskId: { type: 'string' },
       taskTitle: { type: 'string' },
       reason: { type: 'string' },
+      skipped: { type: 'boolean' },
     },
-    required: ['taskId', 'taskTitle', 'reason'],
+    required: ['taskId', 'taskTitle', 'reason', 'skipped'],
   },
 } as const;
 

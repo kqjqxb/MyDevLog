@@ -1,11 +1,12 @@
 import { PrioritizationResult, Task } from '@/shared/types';
+import { stripMarkdown } from '@/shared/utils';
 
 import { ClaudeMessage, sendStructured } from '../anthropicClient';
 import { serializeTasks } from './context';
 import { PRIORITIZATION_QUALITY_GUARD, CONTENT_WARNINGS_SCHEMA_FRAGMENT } from './contentQualityGuard';
 
 const SYSTEM_PROMPT = `You are a senior engineering lead helping a developer decide what to work on TODAY.
-You receive a backlog of tasks with status, priority, age in days, and subtask progress.
+You receive a backlog of tasks with status, priority, age in days, subtask progress, and individual subtask titles.
 
 Reason like a pragmatic tech lead:
 - High-priority and in-progress work generally comes first.
@@ -20,7 +21,9 @@ question. Otherwise produce the final ranked plan.
 
 Always respond using the provided JSON schema. When you produce a final plan,
 rank only the tasks worth doing today (skip done tasks), lowest rank number =
-do first, and give a one-sentence reasoning per task.
+do first, and give a one-sentence reasoning per task. In the summary and all
+per-task reasoning text, always refer to tasks by their title — never by the
+raw taskId string.
 
 ${PRIORITIZATION_QUALITY_GUARD}`;
 
@@ -34,7 +37,7 @@ interface RawPrioritization {
     title: string;
     reasoning: string;
   }>;
-  contentWarnings: Array<{ taskId: string; taskTitle: string; reason: string }>;
+  contentWarnings: Array<{ taskId: string; taskTitle: string; reason: string; skipped: boolean }>;
 }
 
 const SCHEMA = {
@@ -80,10 +83,16 @@ function toTurn(raw: RawPrioritization, messages: ClaudeMessage[]): Prioritizati
     return { kind: 'clarify', question: raw.clarifyingQuestion, messages: fullMessages };
   }
 
-  const ranked = [...raw.ranked].sort((a, b) => a.rank - b.rank);
+  const ranked = [...raw.ranked]
+    .sort((a, b) => a.rank - b.rank)
+    .map(item => ({ ...item, reasoning: stripMarkdown(item.reasoning) }));
   return {
     kind: 'result',
-    result: { ranked, summary: raw.summary, contentWarnings: raw.contentWarnings },
+    result: {
+      ranked,
+      summary: stripMarkdown(raw.summary),
+      contentWarnings: raw.contentWarnings,
+    },
     messages: fullMessages,
   };
 }
@@ -96,7 +105,7 @@ export async function runPrioritization(
   const messages: ClaudeMessage[] = [
     {
       role: 'user',
-      content: `Here is my current backlog:\n\n${serializeTasks(tasks)}\n\nWhat should I work on today?`,
+      content: `Here is my current backlog:\n\n${serializeTasks(tasks, true)}\n\nWhat should I work on today?`,
     },
   ];
   const raw = await sendStructured<RawPrioritization>({

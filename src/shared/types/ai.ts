@@ -8,6 +8,12 @@ export interface ContentQualityWarning {
   taskId: string;
   taskTitle: string;
   reason: string;
+  /**
+   * true  → task was genuinely skipped (ALL context fields are placeholder/gibberish)
+   * false → title/description are poor but subtasks/notes provide sufficient context;
+   *         the task is still ranked, this is just a quality note about the title
+   */
+  skipped: boolean;
 }
 
 export interface AgentState<TResult> {
