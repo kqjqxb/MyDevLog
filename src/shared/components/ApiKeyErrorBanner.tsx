@@ -69,7 +69,7 @@ function BannerContent({ notification, topInset, onPress, onDismiss }: BannerCon
   const accentColor = ACCENT_COLOR[notification.variant];
 
   return (
-    <View style={[styles.contentOuter, { paddingTop: topInset + SPACING.sm }]}>
+    <View style={[styles.contentOuter, { paddingTop: topInset + SPACING.md }]}>
       {/* Left accent stripe */}
       <View style={[styles.accentStripe, { backgroundColor: accentColor }]} />
 
@@ -288,8 +288,8 @@ const styles = StyleSheet.create({
   contentOuter: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: SPACING.md,
-    paddingRight: SPACING.md,
+    paddingBottom: SPACING.lg,
+    paddingRight: SPACING.lg,
   },
   accentStripe: {
     width: ACCENT_WIDTH,
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
     marginLeft: SPACING.md,
     marginRight: SPACING.md,
-    marginVertical: SPACING.xs,
+    marginVertical: SPACING.sm,
   },
   body: {
     flex: 1,
