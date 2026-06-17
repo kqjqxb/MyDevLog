@@ -1,6 +1,7 @@
 import { DecompositionResult } from '@/shared/types';
 
 import { ClaudeMessage, sendStructured } from '../anthropicClient';
+import { SINGLE_TASK_QUALITY_GUARD } from './contentQualityGuard';
 
 const SYSTEM_PROMPT = `You are an engineering planning agent that breaks a task into a clear,
 ordered list of actionable subtasks.
@@ -13,7 +14,9 @@ This is a MULTI-STEP agent:
   concrete, independently-verifiable subtasks in execution order. Each subtask
   is a short imperative phrase (e.g. "Write unit tests for the parser").
 
-Always respond using the provided JSON schema.`;
+Always respond using the provided JSON schema.
+
+${SINGLE_TASK_QUALITY_GUARD}`;
 
 interface RawDecomposition {
   needsClarification: boolean;

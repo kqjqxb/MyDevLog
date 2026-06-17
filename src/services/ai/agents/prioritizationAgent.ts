@@ -2,6 +2,7 @@ import { PrioritizationResult, Task } from '@/shared/types';
 
 import { ClaudeMessage, sendStructured } from '../anthropicClient';
 import { serializeTasks } from './context';
+import { AGGREGATE_QUALITY_GUARD, CONTENT_WARNINGS_SCHEMA_FRAGMENT } from './contentQualityGuard';
 
 const SYSTEM_PROMPT = `You are a senior engineering lead helping a developer decide what to work on TODAY.
 You receive a backlog of tasks with status, priority, age in days, and subtask progress.
@@ -19,7 +20,9 @@ question. Otherwise produce the final ranked plan.
 
 Always respond using the provided JSON schema. When you produce a final plan,
 rank only the tasks worth doing today (skip done tasks), lowest rank number =
-do first, and give a one-sentence reasoning per task.`;
+do first, and give a one-sentence reasoning per task.
+
+${AGGREGATE_QUALITY_GUARD}`;
 
 interface RawPrioritization {
   needsClarification: boolean;
@@ -31,6 +34,7 @@ interface RawPrioritization {
     title: string;
     reasoning: string;
   }>;
+  contentWarnings: Array<{ taskId: string; taskTitle: string; reason: string }>;
 }
 
 const SCHEMA = {
@@ -56,8 +60,9 @@ const SCHEMA = {
           required: ['taskId', 'rank', 'title', 'reasoning'],
         },
       },
+      contentWarnings: CONTENT_WARNINGS_SCHEMA_FRAGMENT,
     },
-    required: ['needsClarification', 'clarifyingQuestion', 'summary', 'ranked'],
+    required: ['needsClarification', 'clarifyingQuestion', 'summary', 'ranked', 'contentWarnings'],
   },
 } as const;
 
@@ -78,7 +83,7 @@ function toTurn(raw: RawPrioritization, messages: ClaudeMessage[]): Prioritizati
   const ranked = [...raw.ranked].sort((a, b) => a.rank - b.rank);
   return {
     kind: 'result',
-    result: { ranked, summary: raw.summary },
+    result: { ranked, summary: raw.summary, contentWarnings: raw.contentWarnings },
     messages: fullMessages,
   };
 }

@@ -1,5 +1,6 @@
 export * from './AgentCard';
 export * from './ClarifyBox';
+export * from './ContentWarningBanner';
 export * from './PrioritizationResultView';
 export * from './DecompositionResultView';
 export * from './StatusUpdateResultView';

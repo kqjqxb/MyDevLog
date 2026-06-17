@@ -7,6 +7,8 @@ import { ThemedText, TypewriterText } from '@/shared/components';
 import { PrioritizationResult } from '@/shared/types';
 import LinearGradient from 'react-native-linear-gradient';
 
+import { ContentWarningBanner } from './ContentWarningBanner';
+
 interface Props {
   result: PrioritizationResult;
 }
@@ -15,6 +17,7 @@ interface Props {
 export function PrioritizationResultView({ result }: Props) {
   return (
     <View>
+      <ContentWarningBanner warnings={result.contentWarnings} />
       <TypewriterText
         text={result.summary}
         variant="bodyMedium"

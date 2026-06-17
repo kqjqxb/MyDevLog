@@ -7,6 +7,8 @@ import { COLORS, RADIUS, SPACING } from '@/shared/constants';
 import { ThemedText, TypewriterText } from '@/shared/components';
 import { BlockerDetectionResult } from '@/shared/types';
 
+import { ContentWarningBanner } from './ContentWarningBanner';
+
 interface Props {
   result: BlockerDetectionResult;
 }
@@ -17,6 +19,7 @@ export function BlockerResultView({ result }: Props) {
 
   return (
     <View>
+      <ContentWarningBanner warnings={result.contentWarnings} />
       <TypewriterText
         text={result.summary}
         variant="bodyMedium"

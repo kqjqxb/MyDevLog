@@ -2,6 +2,7 @@ import { BlockerDetectionResult, Task } from '@/shared/types';
 
 import { sendStructured } from '../anthropicClient';
 import { serializeTasks } from './context';
+import { AGGREGATE_QUALITY_GUARD, CONTENT_WARNINGS_SCHEMA_FRAGMENT } from './contentQualityGuard';
 
 const SYSTEM_PROMPT = `You are a delivery-risk agent that surfaces hidden blockers in an engineering
 backlog before they kill velocity at standup.
@@ -16,7 +17,9 @@ Analyse ALL tasks together and reason in two passes:
    stuck). Recommend a concrete unblocking action for each.
 
 Return a short overall summary a lead could read aloud at standup. Always
-respond using the provided JSON schema. Use the exact task ids provided.`;
+respond using the provided JSON schema. Use the exact task ids provided.
+
+${AGGREGATE_QUALITY_GUARD}`;
 
 interface RawBlocker {
   links: Array<{
@@ -34,6 +37,7 @@ interface RawBlocker {
     recommendation: string;
   }>;
   summary: string;
+  contentWarnings: Array<{ taskId: string; taskTitle: string; reason: string }>;
 }
 
 const SCHEMA = {
@@ -79,8 +83,9 @@ const SCHEMA = {
         },
       },
       summary: { type: 'string' },
+      contentWarnings: CONTENT_WARNINGS_SCHEMA_FRAGMENT,
     },
-    required: ['links', 'stale', 'summary'],
+    required: ['links', 'stale', 'summary', 'contentWarnings'],
   },
 } as const;
 
@@ -100,5 +105,10 @@ export async function runBlockerDetection(
     jsonSchema: SCHEMA,
     maxTokens: 3072,
   });
-  return { links: raw.links, stale: raw.stale, summary: raw.summary };
+  return {
+    links: raw.links,
+    stale: raw.stale,
+    summary: raw.summary,
+    contentWarnings: raw.contentWarnings,
+  };
 }

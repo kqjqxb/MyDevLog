@@ -98,10 +98,12 @@ export function TaskAIPanel({ task, onApplySubtasks }: TaskAIPanelProps) {
         gradient="accent"
         phase={statusUpdate.state.phase}
         error={statusUpdate.state.error}
-        clarifyingQuestion={null}
+        clarifyingQuestion={statusUpdate.state.clarifyingQuestion}
         runLabel={STRINGS.ai.statusUpdate}
         disabled={!hasKey}
-        onRun={() => statusUpdate.run(task)}>
+        onRun={() => statusUpdate.run(task)}
+        onAnswer={statusUpdate.answer}
+        onClose={statusUpdate.reset}>
         {statusUpdate.state.result ? (
           <StatusUpdateResultView
             result={statusUpdate.state.result}

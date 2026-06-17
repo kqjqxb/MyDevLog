@@ -3,6 +3,13 @@ import { TaskStatus } from './task';
 /** Generic async lifecycle for any AI agent run. */
 export type AgentPhase = 'idle' | 'loading' | 'clarifying' | 'success' | 'error';
 
+/** Advisory flag returned by aggregate agents when a task looks like placeholder content. */
+export interface ContentQualityWarning {
+  taskId: string;
+  taskTitle: string;
+  reason: string;
+}
+
 export interface AgentState<TResult> {
   phase: AgentPhase;
   result: TResult | null;
@@ -25,6 +32,7 @@ export interface PrioritizedTask {
 export interface PrioritizationResult {
   ranked: PrioritizedTask[];
   summary: string;
+  contentWarnings: ContentQualityWarning[];
 }
 
 // ---------------------------------------------------------------------------
@@ -71,6 +79,7 @@ export interface BlockerDetectionResult {
   links: BlockerLink[];
   stale: StaleTask[];
   summary: string;
+  contentWarnings: ContentQualityWarning[];
 }
 
 /** A single record appended to the AI action history. */
