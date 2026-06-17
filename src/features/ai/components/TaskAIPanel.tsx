@@ -50,7 +50,7 @@ export function TaskAIPanel({ task, onApplySubtasks }: TaskAIPanelProps) {
 
   const runDecomposition = useCallback(() => {
     setApplied(false);
-    decomposition.run(task.title, task.description);
+    decomposition.run(task);
   }, [decomposition, task]);
 
   const handleApply = useCallback(() => {

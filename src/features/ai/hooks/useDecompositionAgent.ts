@@ -5,7 +5,9 @@ import {
   continueDecomposition,
   runDecomposition,
 } from '@/services/ai';
-import { AgentState, DecompositionResult } from '@/shared/types';
+import { toAgentErrorMessage } from '@/shared/hooks/agentError';
+import { AgentState, DecompositionResult, Task } from '@/shared/types';
+import { useSettingsStore } from '@/store';
 
 export function serializeDecompositionResult(result: DecompositionResult): string {
   return [
@@ -14,8 +16,6 @@ export function serializeDecompositionResult(result: DecompositionResult): strin
     ...result.subtasks.map((s, i) => `${i + 1}. ${s}`),
   ].join('\n');
 }
-import { toAgentErrorMessage } from '@/shared/hooks/agentError';
-import { useSettingsStore } from '@/store';
 
 const INITIAL: AgentState<DecompositionResult> = {
   phase: 'idle',
@@ -55,10 +55,10 @@ export function useDecompositionAgent() {
   );
 
   const run = useCallback(
-    async (title: string, description: string) => {
+    async (task: Task) => {
       setState({ phase: 'loading', result: null, clarifyingQuestion: null, error: null });
       try {
-        apply(await runDecomposition(apiKey, title, description));
+        apply(await runDecomposition(apiKey, task));
       } catch (error) {
         setState({ phase: 'error', result: null, clarifyingQuestion: null, error: toAgentErrorMessage(error) });
       }

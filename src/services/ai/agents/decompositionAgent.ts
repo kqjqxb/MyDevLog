@@ -1,7 +1,8 @@
-import { DecompositionResult } from '@/shared/types';
+import { DecompositionResult, Task } from '@/shared/types';
 
 import { ClaudeMessage, sendStructured } from '../anthropicClient';
-import { SINGLE_TASK_QUALITY_GUARD } from './contentQualityGuard';
+import { serializeTask } from './context';
+import { DECOMPOSITION_QUALITY_GUARD } from './contentQualityGuard';
 
 const SYSTEM_PROMPT = `You are an engineering planning agent that breaks a task into a clear,
 ordered list of actionable subtasks.
@@ -13,10 +14,12 @@ This is a MULTI-STEP agent:
 - STEP 2: Once the task is clear (or after the user answers), produce 3-7
   concrete, independently-verifiable subtasks in execution order. Each subtask
   is a short imperative phrase (e.g. "Write unit tests for the parser").
+  If the task already has subtasks, use them as context for the overall scope
+  and produce a refined or complete breakdown.
 
 Always respond using the provided JSON schema.
 
-${SINGLE_TASK_QUALITY_GUARD}`;
+${DECOMPOSITION_QUALITY_GUARD}`;
 
 interface RawDecomposition {
   needsClarification: boolean;
@@ -66,13 +69,12 @@ function toTurn(raw: RawDecomposition, messages: ClaudeMessage[]): Decomposition
 
 export async function runDecomposition(
   apiKey: string,
-  title: string,
-  description: string,
+  task: Task,
 ): Promise<DecompositionTurn> {
   const messages: ClaudeMessage[] = [
     {
       role: 'user',
-      content: `Break down this task into subtasks.\n\nTitle: ${title}\nDescription: ${description.trim() || '(none provided)'}`,
+      content: `Break down this task into subtasks.\n\n${serializeTask(task)}`,
     },
   ];
   const raw = await sendStructured<RawDecomposition>({

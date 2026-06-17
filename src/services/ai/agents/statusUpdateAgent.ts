@@ -2,7 +2,7 @@ import { StatusUpdateResult, Task, TaskState } from '@/shared/types';
 
 import { ClaudeMessage, sendStructured } from '../anthropicClient';
 import { serializeTask } from './context';
-import { SINGLE_TASK_QUALITY_GUARD } from './contentQualityGuard';
+import { STATUS_UPDATE_QUALITY_GUARD } from './contentQualityGuard';
 
 const SYSTEM_PROMPT = `You write concise async status updates in the style a developer would post in
 a team Slack channel during standup.
@@ -20,7 +20,7 @@ This is a MULTI-STEP agent:
 Keep it to 2-4 sentences, first person, no corporate filler. A tasteful emoji
 or two is fine. Always respond using the provided JSON schema.
 
-${SINGLE_TASK_QUALITY_GUARD}`;
+${STATUS_UPDATE_QUALITY_GUARD}`;
 
 interface RawStatusUpdate {
   needsClarification: boolean;

@@ -2,7 +2,7 @@ import { PrioritizationResult, Task } from '@/shared/types';
 
 import { ClaudeMessage, sendStructured } from '../anthropicClient';
 import { serializeTasks } from './context';
-import { AGGREGATE_QUALITY_GUARD, CONTENT_WARNINGS_SCHEMA_FRAGMENT } from './contentQualityGuard';
+import { PRIORITIZATION_QUALITY_GUARD, CONTENT_WARNINGS_SCHEMA_FRAGMENT } from './contentQualityGuard';
 
 const SYSTEM_PROMPT = `You are a senior engineering lead helping a developer decide what to work on TODAY.
 You receive a backlog of tasks with status, priority, age in days, and subtask progress.
@@ -22,7 +22,7 @@ Always respond using the provided JSON schema. When you produce a final plan,
 rank only the tasks worth doing today (skip done tasks), lowest rank number =
 do first, and give a one-sentence reasoning per task.
 
-${AGGREGATE_QUALITY_GUARD}`;
+${PRIORITIZATION_QUALITY_GUARD}`;
 
 interface RawPrioritization {
   needsClarification: boolean;
