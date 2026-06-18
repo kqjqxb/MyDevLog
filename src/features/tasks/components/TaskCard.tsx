@@ -25,7 +25,8 @@ import {
   StatusPill,
   ThemedText,
 } from '@/shared/components';
-import { relativeTime, subtaskProgress, triggerHaptic } from '@/shared/utils';
+import { subtaskProgress, triggerHaptic } from '@/shared/utils';
+import { useRelativeTime } from '@/shared/hooks';
 import { Task } from '@/shared/types';
 
 interface TaskCardProps {
@@ -45,6 +46,7 @@ function TaskCardComponent({ task, onPress, onDelete }: TaskCardProps) {
 
   const { done, total } = subtaskProgress(task);
   const highlight = task.priority === 'high' || task.status === 'in-progress';
+  const updatedLabel = useRelativeTime(task.updatedAt);
 
   const requestDelete = useCallback(() => {
     triggerHaptic('notificationWarning');
@@ -147,7 +149,7 @@ function TaskCardComponent({ task, onPress, onDelete }: TaskCardProps) {
                       </ThemedText>
                     ) : null}
                     <ThemedText variant="caption" color={COLORS.textTertiary}>
-                      {relativeTime(task.updatedAt)}
+                      {updatedLabel}
                     </ThemedText>
                   </View>
                 </View>

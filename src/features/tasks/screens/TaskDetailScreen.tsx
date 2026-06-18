@@ -33,7 +33,8 @@ import {
   ThemedText,
 } from '@/shared/components';
 import { COLORS, GRADIENTS, MOTION, RADIUS, SPACING, STRINGS } from '@/shared/constants';
-import { absoluteDate, PRIORITY_COLOR, PRIORITY_LABEL, relativeTime, STATUS_LABEL } from '@/shared/utils';
+import { absoluteDate, PRIORITY_COLOR, PRIORITY_LABEL, STATUS_LABEL } from '@/shared/utils';
+import { useRelativeTime } from '@/shared/hooks';
 import { TaskPriority, TaskStatus } from '@/shared/types';
 import { useTaskStore } from '@/store';
 import { SubtaskRow } from '../components';
@@ -308,6 +309,7 @@ export function TaskDetailScreen() {
   const [newSubtask, setNewSubtask] = useState('');
   const [notesDraft, setNotesDraft] = useState(task?.notes ?? '');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const updatedLabel = useRelativeTime(task?.updatedAt ?? '');
 
   // Navigate back when the task is gone (deleted here or from elsewhere).
   useEffect(() => {
@@ -385,7 +387,7 @@ export function TaskDetailScreen() {
               ·
             </ThemedText>
             <ThemedText variant="caption" color={COLORS.textTertiary}>
-              Updated {relativeTime(task.updatedAt)}
+              Updated {updatedLabel}
             </ThemedText>
           </View>
 
