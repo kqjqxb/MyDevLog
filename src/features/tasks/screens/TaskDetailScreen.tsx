@@ -1,11 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
+  Easing,
+  Extrapolation,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MotiView } from 'moti';
@@ -28,8 +32,8 @@ import {
   SelectablePills,
   ThemedText,
 } from '@/shared/components';
-import { COLORS, MOTION, RADIUS, SPACING, STRINGS } from '@/shared/constants';
-import { PRIORITY_LABEL, relativeTime, STATUS_LABEL } from '@/shared/utils';
+import { COLORS, GRADIENTS, MOTION, RADIUS, SPACING, STRINGS } from '@/shared/constants';
+import { absoluteDate, PRIORITY_COLOR, PRIORITY_LABEL, relativeTime, STATUS_LABEL } from '@/shared/utils';
 import { TaskPriority, TaskStatus } from '@/shared/types';
 import { useTaskStore } from '@/store';
 import { SubtaskRow } from '../components';
@@ -54,35 +58,37 @@ const PRIORITY_OPTIONS: ReadonlyArray<PillOption<TaskPriority>> = [
 // Delete confirmation modal
 // ---------------------------------------------------------------------------
 
-const DIALOG_SPRING = { damping: 22, stiffness: 260, mass: 0.9 } as const;
+// Enter: underdamped for a natural pop (ζ ≈ 0.63 → slight overshoot).
+// Exit: mirror via the same spring going 1→0; clamping prevents negative scale/opacity.
+const DIALOG_SPRING = { damping: 20, stiffness: 260, mass: 0.88 } as const;
 
 interface DeleteConfirmModalProps {
   visible: boolean;
+  priority: TaskPriority;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-function DeleteConfirmModal({ visible, onCancel, onConfirm }: DeleteConfirmModalProps) {
+function DeleteConfirmModal({ visible, priority, onCancel, onConfirm }: DeleteConfirmModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [dialogSize, setDialogSize] = useState<{ width: number; height: number } | null>(null);
 
+  // Single progress value drives both scale and opacity in sync.
+  const progress = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
-  const dialogScale = useSharedValue(0.88);
-  const dialogOpacity = useSharedValue(0);
 
   const animateIn = useCallback(() => {
     backdropOpacity.value = withTiming(1, MOTION.timingFast);
-    dialogScale.value = withSpring(1, DIALOG_SPRING);
-    dialogOpacity.value = withTiming(1, MOTION.timingFast);
-  }, [backdropOpacity, dialogScale, dialogOpacity]);
+    progress.value = withSpring(1, DIALOG_SPRING);
+  }, [backdropOpacity, progress]);
 
   const animateOut = useCallback(
     (done: () => void) => {
-      backdropOpacity.value = withTiming(0, { duration: 200 });
-      dialogScale.value = withSpring(0.88, DIALOG_SPRING);
-      dialogOpacity.value = withTiming(0, { duration: 200 });
-      setTimeout(done, 240);
+      backdropOpacity.value = withTiming(0, { duration: 220 });
+      progress.value = withSpring(0, DIALOG_SPRING);
+      setTimeout(done, 300);
     },
-    [backdropOpacity, dialogScale, dialogOpacity],
+    [backdropOpacity, progress],
   );
 
   useEffect(() => {
@@ -108,11 +114,13 @@ function DeleteConfirmModal({ visible, onCancel, onConfirm }: DeleteConfirmModal
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
   const dialogStyle = useAnimatedStyle(() => ({
-    opacity: dialogOpacity.value,
-    transform: [{ scale: dialogScale.value }],
+    opacity: interpolate(progress.value, [0, 1], [0, 1], Extrapolation.CLAMP),
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.9, 1], Extrapolation.CLAMP) }],
   }));
 
   if (!mounted) return null;
+
+  const priorityTint = PRIORITY_COLOR[priority];
 
   return (
     <Modal
@@ -126,7 +134,65 @@ function DeleteConfirmModal({ visible, onCancel, onConfirm }: DeleteConfirmModal
       </Animated.View>
 
       <View style={modalStyles.centeredContainer} pointerEvents="box-none">
-        <Animated.View style={[modalStyles.dialog, dialogStyle]}>
+        <Animated.View
+          style={[modalStyles.dialog, dialogStyle]}
+          onLayout={e =>
+            setDialogSize({
+              width: e.nativeEvent.layout.width,
+              height: e.nativeEvent.layout.height,
+            })
+          }>
+
+          {/* Subtle priority tint — same muted opacity as an inactive pill surface */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              modalStyles.tintOverlay,
+              { backgroundColor: priorityTint },
+            ]}
+          />
+
+          {/* Animated gradient border — mirrors AnimatedAIBackdrop opacity breathe */}
+          {dialogSize && (
+            <MotiView
+              pointerEvents="none"
+              style={StyleSheet.absoluteFill}
+              from={{ opacity: 0.5 }}
+              animate={{ opacity: 1.0 }}
+              transition={{
+                type: 'timing',
+                duration: 4000,
+                loop: true,
+                repeatReverse: true,
+                easing: Easing.inOut(Easing.ease),
+              }}>
+              <Svg
+                width={dialogSize.width}
+                height={dialogSize.height}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none">
+                <Defs>
+                  <SvgLinearGradient id="aiBorderGrad" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor={GRADIENTS.ai[0]} />
+                    <Stop offset="0.5" stopColor={GRADIENTS.ai[1]} />
+                    <Stop offset="1" stopColor={GRADIENTS.ai[2]} />
+                  </SvgLinearGradient>
+                </Defs>
+                <Rect
+                  x={1}
+                  y={1}
+                  width={dialogSize.width - 2}
+                  height={dialogSize.height - 2}
+                  rx={RADIUS.xl}
+                  ry={RADIUS.xl}
+                  fill="none"
+                  stroke="url(#aiBorderGrad)"
+                  strokeWidth={2}
+                />
+              </Svg>
+            </MotiView>
+          )}
+
           <View style={modalStyles.iconRow}>
             <View style={modalStyles.iconWrap}>
               <Trash2 color={COLORS.danger} size={22} />
@@ -171,13 +237,16 @@ const modalStyles = StyleSheet.create({
   },
   dialog: {
     width: '100%',
-    backgroundColor: '#1C1C2E',
+    backgroundColor: '#000017',
     borderRadius: RADIUS.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderStrong,
+    overflow: 'hidden',
     padding: SPACING.xxl,
     alignItems: 'center',
     gap: SPACING.sm,
+  },
+  tintOverlay: {
+    borderRadius: RADIUS.xl,
+    opacity: 0.07,
   },
   iconWrap: {
     width: 52,
@@ -310,7 +379,7 @@ export function TaskDetailScreen() {
           <ThemedText variant="heading">{task.title}</ThemedText>
           <View style={styles.metaRow}>
             <ThemedText variant="caption" color={COLORS.textTertiary}>
-              Created {relativeTime(task.createdAt)}
+              Created {absoluteDate(task.createdAt)}
             </ThemedText>
             <ThemedText variant="caption" color={COLORS.textTertiary} style={styles.metaSep}>
               ·
@@ -404,6 +473,7 @@ export function TaskDetailScreen() {
 
       <DeleteConfirmModal
         visible={showDeleteModal}
+        priority={task.priority}
         onCancel={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
       />

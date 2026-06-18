@@ -1,9 +1,18 @@
-import { differenceInCalendarDays, formatDistanceToNowStrict, parseISO } from 'date-fns';
+import { differenceInCalendarDays, format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 
 /** "3 days ago", "5 minutes ago", etc. */
 export function relativeTime(iso: string): string {
   try {
     return formatDistanceToNowStrict(parseISO(iso), { addSuffix: true });
+  } catch {
+    return '';
+  }
+}
+
+/** Absolute date formatted as DD.MM.YYYY. */
+export function absoluteDate(iso: string): string {
+  try {
+    return format(parseISO(iso), 'dd.MM.yyyy');
   } catch {
     return '';
   }
