@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MotiView } from 'moti';
@@ -22,7 +28,7 @@ import {
   SelectablePills,
   ThemedText,
 } from '@/shared/components';
-import { COLORS, SPACING, STRINGS } from '@/shared/constants';
+import { COLORS, MOTION, RADIUS, SPACING, STRINGS } from '@/shared/constants';
 import { PRIORITY_LABEL, relativeTime, STATUS_LABEL } from '@/shared/utils';
 import { TaskPriority, TaskStatus } from '@/shared/types';
 import { useTaskStore } from '@/store';
@@ -44,6 +50,180 @@ const PRIORITY_OPTIONS: ReadonlyArray<PillOption<TaskPriority>> = [
   { value: 'high', label: PRIORITY_LABEL.high, gradient: 'danger' },
 ];
 
+// ---------------------------------------------------------------------------
+// Delete confirmation modal
+// ---------------------------------------------------------------------------
+
+const DIALOG_SPRING = { damping: 22, stiffness: 260, mass: 0.9 } as const;
+
+interface DeleteConfirmModalProps {
+  visible: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+function DeleteConfirmModal({ visible, onCancel, onConfirm }: DeleteConfirmModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  const backdropOpacity = useSharedValue(0);
+  const dialogScale = useSharedValue(0.88);
+  const dialogOpacity = useSharedValue(0);
+
+  const animateIn = useCallback(() => {
+    backdropOpacity.value = withTiming(1, MOTION.timingFast);
+    dialogScale.value = withSpring(1, DIALOG_SPRING);
+    dialogOpacity.value = withTiming(1, MOTION.timingFast);
+  }, [backdropOpacity, dialogScale, dialogOpacity]);
+
+  const animateOut = useCallback(
+    (done: () => void) => {
+      backdropOpacity.value = withTiming(0, { duration: 200 });
+      dialogScale.value = withSpring(0.88, DIALOG_SPRING);
+      dialogOpacity.value = withTiming(0, { duration: 200 });
+      setTimeout(done, 240);
+    },
+    [backdropOpacity, dialogScale, dialogOpacity],
+  );
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      requestAnimationFrame(animateIn);
+    }
+  }, [visible, animateIn]);
+
+  const handleCancel = useCallback(() => {
+    animateOut(() => {
+      setMounted(false);
+      onCancel();
+    });
+  }, [animateOut, onCancel]);
+
+  const handleConfirm = useCallback(() => {
+    animateOut(() => {
+      setMounted(false);
+      onConfirm();
+    });
+  }, [animateOut, onConfirm]);
+
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
+  const dialogStyle = useAnimatedStyle(() => ({
+    opacity: dialogOpacity.value,
+    transform: [{ scale: dialogScale.value }],
+  }));
+
+  if (!mounted) return null;
+
+  return (
+    <Modal
+      visible={mounted}
+      transparent
+      animationType="none"
+      onRequestClose={handleCancel}
+      statusBarTranslucent>
+      <Animated.View style={[StyleSheet.absoluteFill, modalStyles.backdrop, backdropStyle]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleCancel} />
+      </Animated.View>
+
+      <View style={modalStyles.centeredContainer} pointerEvents="box-none">
+        <Animated.View style={[modalStyles.dialog, dialogStyle]}>
+          <View style={modalStyles.iconRow}>
+            <View style={modalStyles.iconWrap}>
+              <Trash2 color={COLORS.danger} size={22} />
+            </View>
+          </View>
+
+          <ThemedText variant="subheading" style={modalStyles.title}>
+            {STRINGS.tasks.deleteConfirmTitle}
+          </ThemedText>
+          <ThemedText variant="body" color={COLORS.textSecondary} style={modalStyles.message}>
+            {STRINGS.tasks.deleteConfirmMessage}
+          </ThemedText>
+
+          <View style={modalStyles.actions}>
+            <Pressable onPress={handleCancel} style={modalStyles.cancelBtn}>
+              <ThemedText variant="bodyMedium" color={COLORS.textSecondary}>
+                Cancel
+              </ThemedText>
+            </Pressable>
+            <GradientButton
+              label="Delete"
+              gradient="danger"
+              onPress={handleConfirm}
+              style={modalStyles.deleteBtn}
+            />
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+const modalStyles = StyleSheet.create({
+  backdrop: {
+    backgroundColor: 'rgba(0,0,0,0.72)',
+  },
+  centeredContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  dialog: {
+    width: '100%',
+    backgroundColor: '#1C1C2E',
+    borderRadius: RADIUS.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.borderStrong,
+    padding: SPACING.xxl,
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  iconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: RADIUS.lg,
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
+  },
+  iconRow: {
+    alignItems: 'center',
+  },
+  title: {
+    textAlign: 'center',
+  },
+  message: {
+    textAlign: 'center',
+    lineHeight: 22,
+    marginTop: SPACING.xs,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.lg,
+    width: '100%',
+  },
+  cancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+  },
+  deleteBtn: {
+    flex: 1,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Main screen
+// ---------------------------------------------------------------------------
+
 export function TaskDetailScreen() {
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<Route>();
@@ -58,27 +238,28 @@ export function TaskDetailScreen() {
 
   const [newSubtask, setNewSubtask] = useState('');
   const [notesDraft, setNotesDraft] = useState(task?.notes ?? '');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // If the task was deleted (e.g. via swipe elsewhere), leave the screen.
+  // Navigate back when the task is gone (deleted here or from elsewhere).
   useEffect(() => {
     if (!task) {
       navigation.goBack();
     }
   }, [task, navigation]);
 
-  const handleDelete = useCallback(() => {
-    Alert.alert(STRINGS.tasks.deleteConfirmTitle, STRINGS.tasks.deleteConfirmMessage, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          deleteTask(taskId);
-          navigation.goBack();
-        },
-      },
-    ]);
-  }, [deleteTask, navigation, taskId]);
+  const handleDeletePress = useCallback(() => {
+    setShowDeleteModal(true);
+  }, []);
+
+  const handleDeleteCancel = useCallback(() => {
+    setShowDeleteModal(false);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    setShowDeleteModal(false);
+    // Only delete — the useEffect above handles goBack() once task disappears.
+    deleteTask(taskId);
+  }, [deleteTask, taskId]);
 
   const handleAddSubtask = useCallback(() => {
     const trimmed = newSubtask.trim();
@@ -112,7 +293,7 @@ export function TaskDetailScreen() {
             style={styles.headerButton}>
             <Pencil color={COLORS.textSecondary} size={20} />
           </Pressable>
-          <Pressable onPress={handleDelete} hitSlop={8} style={styles.headerButton}>
+          <Pressable onPress={handleDeletePress} hitSlop={8} style={styles.headerButton}>
             <Trash2 color={COLORS.danger} size={20} />
           </Pressable>
         </View>
@@ -127,9 +308,17 @@ export function TaskDetailScreen() {
           animate={{ opacity: 1, translateY: 0 }}
           transition={{ type: 'spring', damping: 18, stiffness: 160 }}>
           <ThemedText variant="heading">{task.title}</ThemedText>
-          <ThemedText variant="caption" color={COLORS.textTertiary} style={styles.meta}>
-            Updated {relativeTime(task.updatedAt)}
-          </ThemedText>
+          <View style={styles.metaRow}>
+            <ThemedText variant="caption" color={COLORS.textTertiary}>
+              Created {relativeTime(task.createdAt)}
+            </ThemedText>
+            <ThemedText variant="caption" color={COLORS.textTertiary} style={styles.metaSep}>
+              ·
+            </ThemedText>
+            <ThemedText variant="caption" color={COLORS.textTertiary}>
+              Updated {relativeTime(task.updatedAt)}
+            </ThemedText>
+          </View>
 
           {task.description ? (
             <ThemedText variant="body" color={COLORS.textSecondary} style={styles.description}>
@@ -212,6 +401,12 @@ export function TaskDetailScreen() {
 
         <TaskAIPanel task={task} onApplySubtasks={titles => addSubtasks(taskId, titles)} />
       </ScrollView>
+
+      <DeleteConfirmModal
+        visible={showDeleteModal}
+        onCancel={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+      />
     </ScreenContainer>
   );
 }
@@ -235,8 +430,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
     paddingBottom: SPACING.huge,
   },
-  meta: {
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: SPACING.xs,
+    gap: SPACING.xs,
+  },
+  metaSep: {
+    opacity: 0.4,
   },
   description: {
     marginTop: SPACING.lg,
