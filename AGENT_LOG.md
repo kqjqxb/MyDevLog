@@ -43,11 +43,54 @@ After generation: `tsc --noEmit`, `eslint`, and `jest` all run clean.
   (JSON schema) for reliable typed agent results, but still wrapped parsing in a
   defensive extractor (`parseJSON`) that survives code fences / prose — belt and
   braces, and unit-tested.
-- **Multi-step agent design.** Deciding *which* agents genuinely need a clarifying
-  round (Prioritization, Decomposition) vs. a single classify-then-write pass
-  (Status Update, Blocker Detector) was a product call, not something to leave to
-  the model. The clarify hand-off (persisting the conversation in a ref and feeding
-  the answer back) was designed deliberately.
+- **Multi-step agent design — two distinct patterns.** All four agents are now
+  genuinely multi-step, but for different reasons:
+  - *Prioritization and Decomposition* use a conditional clarify→continue pattern:
+    one API call that either returns a result or asks a question; a second call
+    only happens if the user answers. The second call is only needed when context
+    is genuinely ambiguous.
+  - *Status Update and Blocker Detector* always make two sequential calls by
+    design. Status Update: call 1 classifies the task state (on-track / blocked /
+    completed / needs-review), call 2 writes the Slack-style message with tone
+    matched to that classification. Blocker Detector: call 1 detects dependency
+    links, stale work, and flags candidate content warnings; call 2 resolves the
+    advisory-vs-skip decision for each flagged task and writes the standup summary.
+    These are not a clarify round-trip — they're a pipeline where the output of
+    step 1 is load-bearing input to step 2. Merging them into one prompt would
+    require asking the model to simultaneously reason about state and produce
+    polished copy, which produces worse results than separating the concerns.
+  - Deciding which pattern belonged to which agent was a product call, not
+    something left to the model.
+- **Content Quality Guard system.** Whether a low-context task should *block* with
+  a clarifying question or surface a *non-blocking advisory warning* was a
+  deliberate product decision: single-task agents (Status Update, Decomposition)
+  block because they cannot produce a useful result without a real task; aggregate
+  agents (Prioritization, Blocker Detector) warn but still run, because skipping
+  one bad task should not prevent the rest of the backlog from being analysed.
+  This is encoded in `contentQualityGuard.ts` via a `ContextScope` config per
+  agent — a declarative map of which fields count as "sufficient context" for that
+  agent's purpose. Notably, Blocker Detector's scope deliberately excludes subtasks
+  and notes (`useSubtasks: false, useNotes: false`): subtask completion state is
+  not relevant to inferring cross-task dependencies, so including it would produce
+  false negatives (tasks with placeholder titles but real subtasks would be
+  incorrectly cleared). The other three agents use the full scope. Getting the
+  scope thresholds right took a few iterations — initial versions had false
+  positives where agents with sufficient subtask context were still incorrectly
+  blocked or flagged (e.g. a task with a placeholder title but real subtasks
+  triggering a clarifying question). Testing surfaced these cases and the scope
+  rules were tightened accordingly.
+- **Break Down Task duplicate prevention.** The Decomposition agent now reads
+  existing subtasks before generating new ones and is explicitly instructed to
+  return `subtasks: []` if all pending work is already covered — rather than
+  re-suggesting overlapping items. This was a fix for a real observed failure mode
+  (running the agent twice on the same task produced duplicated subtasks), not a
+  speculative guard.
+- **Error notification system.** API key errors, rate-limit responses, and network
+  failures now surface in a shared top-banner component (`ApiKeyErrorBanner` +
+  `notificationStore`) mounted once at the root in `App.tsx`. Previously these
+  were raw console errors; consolidating into a single Zustand store + one
+  reusable animated banner keeps error presentation consistent across all four
+  agent screens and eliminates duplicated per-screen error handling logic.
 - **Navigation trade-off.** The spec asked for "native stack with custom spring
   interpolators". `@react-navigation/native-stack` uses platform-native transitions
   and does not expose `cardStyleInterpolator` (that's the JS stack). Rather than pull
@@ -73,8 +116,16 @@ After generation: `tsc --noEmit`, `eslint`, and `jest` all run clean.
 
 - **Most:** breadth and consistency — generating a large, internally-consistent,
   strictly-typed codebase with a uniform design system and matching animation idioms
-  far faster than by hand, and keeping imports/barrels/aliases coherent across ~60 files.
-- **Least / human-led:** product decisions (agent step design, which feature is the
-  "custom" one and why it's useful), API-contract choices, and the honest trade-offs
-  above. The agent is excellent at execution and consistency; the architectural and
-  product framing is where human judgment carried the work.
+  far faster than by hand, and keeping imports/barrels/aliases coherent across ~60
+  files. The agent was also effective at executing structural refactors once the
+  multi-step pipeline shape was specified (splitting single prompts into explicit
+  step 1 / step 2 functions with typed intermediate schemas).
+- **Least / human-led:** product decisions and iterative debugging. The multi-step
+  pipeline shapes, which agents block vs. warn, and the per-agent `ContextScope`
+  fields were all specified by hand. The guard system's scope thresholds in
+  particular required iterative debugging driven by real test output — false
+  positives that the agent would not have surfaced on its own. The dedup fix for
+  Decomposition also came from observing a concrete failure in testing, not from
+  the agent anticipating the problem. The agent is excellent at execution and
+  consistency; the architectural framing, product reasoning, and debugging from
+  real behaviour are where human judgment carried the work.
