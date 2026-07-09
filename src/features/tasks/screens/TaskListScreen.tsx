@@ -16,11 +16,11 @@ import {
   ThemedText,
 } from '@/shared/components';
 import { COLORS, SPACING, STRINGS } from '@/shared/constants';
-import { useTasks } from '@/shared/hooks';
+import { useRecommendations, useTasks } from '@/shared/hooks';
 import { SortMode, StatusFilter } from '@/shared/utils';
 import { Task } from '@/shared/types';
 import { useTaskStore } from '@/store';
-import { CreateTaskFab, SortToggle, TaskCard } from '../components';
+import { CreateTaskFab, RecommendationsRail, SortToggle, TaskCard } from '../components';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -38,6 +38,7 @@ export function TaskListScreen() {
 
   const { visibleTasks, counts, hydrated } = useTasks(filter, sort);
   const deleteTask = useTaskStore(state => state.deleteTask);
+  const { recommendations } = useRecommendations('home', 5);
 
   const tabOptions = FILTER_OPTIONS.map(option => ({
     ...option,
@@ -79,6 +80,14 @@ export function TaskListScreen() {
           {STRINGS.tagline}
         </ThemedText>
       </View>
+
+      {hydrated && !noTasksAtAll ? (
+        <RecommendationsRail
+          context="home"
+          recommendations={recommendations}
+          onPress={taskId => navigation.navigate('TaskDetail', { taskId })}
+        />
+      ) : null}
 
       <View style={styles.controls}>
         <FilterTabs options={tabOptions} value={filter} onChange={setFilter} />

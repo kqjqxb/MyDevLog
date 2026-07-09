@@ -50,6 +50,11 @@ export const STRINGS = {
     submitEdit: 'Save Changes',
   },
 
+  recommendations: {
+    title: 'Recommended for you',
+    subtitle: 'Tasks that could use your attention',
+  },
+
   ai: {
     panelTitle: 'AI Agents',
     panelSubtitle: 'Multi-step agents powered by Claude',
