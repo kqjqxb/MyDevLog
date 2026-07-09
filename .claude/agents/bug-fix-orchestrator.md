@@ -28,12 +28,27 @@ report a human can act on.
    State this grouping to the user before dispatching anything if the batch is
    large (5+ bugs) or if conflicts were found.
 
-3. **Track with TodoWrite.** Create one todo per bug before dispatch, so
+3. **Snapshot uncommitted state.** Run `git status --short` before dispatching
+   anything. A `worktree` checkout is created from a commit — it will NOT see
+   uncommitted changes in the main working tree. If the tree is dirty:
+   - Create a snapshot commit with `git stash create` (this does not touch or
+     clear the working tree — it just produces a commit object containing the
+     current index + working changes).
+   - Base every sub-agent's worktree on that snapshot commit (e.g.
+     `git worktree add <path> <stash-commit-sha>`) instead of `HEAD`, so
+     sub-agents see the real current state, uncommitted work included.
+   - If the tree is clean, worktrees from `HEAD` are fine as-is.
+   - Never skip this check — a dirty tree with worktrees silently based on
+     `HEAD` is the single most likely way this workflow produces a false
+     "already fixed, no changes needed" report from a sub-agent.
+
+4. **Track with TodoWrite.** Create one todo per bug before dispatch, so
    progress is visible as sub-agents complete.
 
-4. **Dispatch.** For each independent bug, spawn an Agent (subagent_type:
-   general-purpose, isolation: "worktree" when the fix requires file edits) in
-   the background with a self-contained prompt that includes:
+5. **Dispatch.** For each independent bug, spawn an Agent (subagent_type:
+   general-purpose, isolation: "worktree" when the fix requires file edits,
+   worktree based on the snapshot from step 3) in the background with a
+   self-contained prompt that includes:
    - The bug description and repro steps
    - The specific file(s)/area to start looking in (from step 2)
    - An instruction to fix only that bug — no unrelated cleanup
@@ -41,15 +56,18 @@ report a human can act on.
      report the result
    - An instruction to report back: what was changed, why, and what should be
      manually verified
+   - If a sub-agent reports "already correct, no change needed" on a bug you
+     expected to reproduce, treat that as a signal to re-check the worktree's
+     base commit against step 3 before accepting the report at face value.
 
    Conflicting-group bugs are dispatched one at a time, waiting for each to
    finish before starting the next in that group.
 
-5. **Aggregate.** As each sub-agent reports back, mark its todo done and
+6. **Aggregate.** As each sub-agent reports back, mark its todo done and
    record: bug, files changed, verification status, any manual QA still
    needed. Do not just relay each sub-agent's raw message — synthesize.
 
-6. **Final report.** Once all bugs are resolved or triaged out, produce a
+7. **Final report.** Once all bugs are resolved or triaged out, produce a
    single summary (format below). If sub-agents used isolated worktrees, list
    the worktree paths/branches so the user can review and merge each
    independently — do not merge or push anything yourself.
@@ -79,6 +97,10 @@ report a human can act on.
   — each sub-agent's prompt must say so explicitly.
 - Don't push, merge, or delete branches/worktrees yourself. Report locations
   and let the user review.
+- Never base a worktree on bare `HEAD` without first checking `git status
+  --short`. Uncommitted changes are a normal, common state (WIP work, a
+  pending fix from earlier in the session) — treating them as invisible is a
+  correctness bug in this workflow, not an edge case to shrug off.
 - If a bug turns out to be much larger than described once a sub-agent
   investigates (architectural issue, not a bug), have it stop and report back
   rather than attempting a large unplanned change.
