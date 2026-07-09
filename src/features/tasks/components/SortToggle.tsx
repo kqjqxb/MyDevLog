@@ -38,7 +38,7 @@ export function SortToggle({ mode, onToggle }: SortToggleProps) {
   const handlePress = useCallback(() => {
     triggerHaptic('selection');
     rotation.value = withSpring(rotation.value + 180, MOTION.springSnappy);
-    onToggle(mode === 'priority' ? 'date' : 'priority');
+    onToggle(mode === 'priority' ? 'priority' : 'priority');
   }, [mode, onToggle, rotation]);
 
   return (

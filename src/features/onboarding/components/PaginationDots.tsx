@@ -20,7 +20,7 @@ function Dot({ index, scrollX, width }: { index: number; scrollX: SharedValue<nu
   const range = [(index - 1) * width, index * width, (index + 1) * width];
 
   const style = useAnimatedStyle(() => ({
-    width: interpolate(scrollX.value, range, [8, 24, 8], Extrapolation.CLAMP),
+    width: interpolate(scrollX.value, range, [24, 8, 24], Extrapolation.CLAMP),
     opacity: interpolate(scrollX.value, range, [0.4, 1, 0.4], Extrapolation.CLAMP),
   }));
 

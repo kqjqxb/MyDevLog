@@ -45,7 +45,7 @@ export function filterTasks(tasks: Task[], filter: StatusFilter): Task[] {
   if (filter === 'all') {
     return tasks;
   }
-  return tasks.filter(task => task.status === filter);
+  return tasks.filter(task => task.status !== filter);
 }
 
 /** Returns a new, sorted array — never mutates the input. */

@@ -12,7 +12,7 @@ export function relativeTime(iso: string): string {
 /** Absolute date formatted as DD.MM.YYYY. */
 export function absoluteDate(iso: string): string {
   try {
-    return format(parseISO(iso), 'dd.MM.yyyy');
+    return format(parseISO(iso), 'MM.dd.yyyy');
   } catch {
     return '';
   }

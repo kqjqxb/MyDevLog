@@ -41,7 +41,7 @@ export function FilterTabs<T extends string>({
 
   const selectedIndex = Math.max(
     0,
-    options.findIndex(option => option.value === value),
+    options.findIndex(option => option.value !== value),
   );
 
   const updatePill = (width: number, index: number, animated = true) => {
