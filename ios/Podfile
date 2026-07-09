@@ -30,5 +30,24 @@ target 'MyDevLog' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Work around fmt 11.0.2 "call to consteval function is not a constant
+    # expression" build errors with newer Xcode/Clang toolchains (Xcode 16.3+).
+    # Fixed upstream in fmt 11.0.3+, but React Native's vendored fmt.podspec
+    # still pins 11.0.2. fmt's base.h unconditionally redefines
+    # FMT_USE_CONSTEVAL itself, so a command-line -D override is ignored;
+    # patch the header directly to force it off.
+    fmt_header = File.join(__dir__, 'Pods', 'fmt', 'include', 'fmt', 'base.h')
+    if File.exist?(fmt_header)
+      content = File.read(fmt_header)
+      patched = content.sub(
+        "#if !defined(__cpp_lib_is_constant_evaluated)\n#  define FMT_USE_CONSTEVAL 0",
+        "#if 1\n#  define FMT_USE_CONSTEVAL 0"
+      )
+      if patched != content
+        File.chmod(0644, fmt_header)
+        File.write(fmt_header, patched)
+      end
+    end
   end
 end
