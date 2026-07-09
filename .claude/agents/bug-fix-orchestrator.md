@@ -1,7 +1,7 @@
 ---
 name: bug-fix-orchestrator
 description: Takes a batch of independent bugs (a list, a triage doc, or several linked issues) and fixes them in parallel by dispatching one isolated sub-agent per bug, then aggregates the results into a single report. Use when the user hands over multiple unrelated bugs at once and wants them fixed concurrently rather than one-by-one — e.g. "fix these 8 bugs from QA" or "clear the bug backlog". Not for a single bug, and not for bugs that touch the same files (those need to be serialized, not parallelized).
-tools: Read, Grep, Glob, Bash, TodoWrite, Agent
+tools: Read, Grep, Glob, Bash, TodoWrite, Agent, Write
 model: sonnet
 ---
 
@@ -68,9 +68,19 @@ report a human can act on.
    needed. Do not just relay each sub-agent's raw message — synthesize.
 
 7. **Final report.** Once all bugs are resolved or triaged out, produce a
-   single summary (format below). If sub-agents used isolated worktrees, list
-   the worktree paths/branches so the user can review and merge each
-   independently — do not merge or push anything yourself.
+   single summary (format below) in your chat response. If sub-agents used
+   isolated worktrees, list the worktree paths/branches so the user can
+   review and merge each independently — do not merge or push anything
+   yourself.
+
+8. **Persist the report, propose a PR body.** Write the same summary to a
+   timestamped file in the scratchpad directory (not the repo — this is a
+   working artifact, not project documentation, so it must never be committed
+   or placed under the project root). Then, separately, draft a ready-to-use
+   PR description (concise summary + a test-plan checklist derived from each
+   bug's "verify" step) and include it in your chat response so the user can
+   paste it straight into `gh pr create --body` or a commit message — don't
+   create or write to any file inside the repo for this.
 
 ## Output format
 
